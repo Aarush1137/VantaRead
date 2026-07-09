@@ -67,7 +67,7 @@ class NovelRepository @Inject constructor(
         return novelDao.getNovel(novelUrl)
     }
 
-    suspend fun toggleBookmark(novelDetails: NovelDetails) {
+    suspend fun toggleBookmark(novelDetails: NovelDetails, sourceId: String) {
         val existing = novelDao.getNovel(novelDetails.url)
         if (existing != null) {
             novelDao.updateBookmarkStatus(novelDetails.url, !existing.isBookmarked)
@@ -82,7 +82,8 @@ class NovelRepository @Inject constructor(
                     genres = novelDetails.genres.joinToString(","),
                     status = novelDetails.status,
                     latestUpdate = novelDetails.latestUpdate,
-                    isBookmarked = true
+                    isBookmarked = true,
+                    sourceId = sourceId
                 )
             )
         }

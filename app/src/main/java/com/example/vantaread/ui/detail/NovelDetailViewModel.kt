@@ -72,8 +72,8 @@ class NovelDetailViewModel @Inject constructor(
     fun toggleBookmark() {
         val details = _novelDetails.value ?: return
         viewModelScope.launch {
-            novelRepository.toggleBookmark(details)
-            checkBookmarkStatus()
+            novelRepository.toggleBookmark(details, sourceId)
+            _isBookmarked.value = !_isBookmarked.value
         }
     }
 }
