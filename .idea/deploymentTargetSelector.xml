@@ -11,11 +11,6 @@
                 <DeviceId pluginId="PhysicalDevice" identifier="serial=8487f76c" />
               </handle>
             </Target>
-            <Target type="DEFAULT_BOOT">
-              <handle>
-                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\aarus\.android\avd\Pixel_8.avd" />
-              </handle>
-            </Target>
           </targets>
         </DialogSelection>
       </SelectionState>

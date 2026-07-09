@@ -34,9 +34,13 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelSources(): Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource> {
+    fun provideNovelSources(@ApplicationContext context: Context): Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource> {
         val wtrLab = WtrLabSource()
-        return mapOf(wtrLab.sourceId to wtrLab)
+        val novelFull = com.example.vantaread.data.source.novelfull.NovelFullSource(context)
+        return mapOf(
+            wtrLab.sourceId to wtrLab,
+            novelFull.sourceId to novelFull
+        )
     }
 
     @Provides
