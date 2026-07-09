@@ -26,6 +26,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val novels by viewModel.savedNovels.collectAsState()
+    val popularNovels by viewModel.popularNovels.collectAsState()
 
     Scaffold(
         topBar = {
@@ -44,8 +45,35 @@ fun LibraryScreen(
         }
     ) { padding ->
         if (novels.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Your library is empty. Click + to discover novels.")
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Your library is empty. Here are some suggestions:")
+                }
+                
+                if (popularNovels.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 120.dp),
+                        contentPadding = PaddingValues(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(popularNovels) { novel ->
+                            NovelItemUi(
+                                title = novel.title,
+                                coverUrl = novel.coverUrl,
+                                onClick = { onNovelClick(novel.url, "wtr-lab") }
+                            )
+                        }
+                    }
+                }
             }
         } else {
             LazyVerticalGrid(
@@ -54,7 +82,11 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize().padding(padding)
             ) {
                 items(novels) { novel ->
-                    NovelItem(novel = novel, onClick = { onNovelClick(novel.url, novel.sourceId) })
+                    NovelItemUi(
+                        title = novel.title,
+                        coverUrl = novel.coverUrl,
+                        onClick = { onNovelClick(novel.url, novel.sourceId) }
+                    )
                 }
             }
         }
@@ -62,7 +94,7 @@ fun LibraryScreen(
 }
 
 @Composable
-fun NovelItem(novel: NovelEntity, onClick: () -> Unit) {
+fun NovelItemUi(title: String, coverUrl: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .padding(4.dp)
@@ -72,15 +104,15 @@ fun NovelItem(novel: NovelEntity, onClick: () -> Unit) {
     ) {
         Column {
             AsyncImage(
-                model = novel.coverUrl,
-                contentDescription = novel.title,
+                model = coverUrl,
+                contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.66f)
             )
             Text(
-                text = novel.title,
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -89,3 +121,4 @@ fun NovelItem(novel: NovelEntity, onClick: () -> Unit) {
         }
     }
 }
+
