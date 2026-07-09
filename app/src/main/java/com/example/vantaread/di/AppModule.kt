@@ -5,7 +5,6 @@ import androidx.room.Room
 import com.example.vantaread.data.db.AppDatabase
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.repository.NovelRepository
-import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.wtrlab.WtrLabSource
 import dagger.Module
 import dagger.Provides
@@ -35,13 +34,14 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelSource(): NovelSource {
-        return WtrLabSource()
+    fun provideNovelSources(): Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource> {
+        val wtrLab = WtrLabSource()
+        return mapOf(wtrLab.sourceId to wtrLab)
     }
 
     @Provides
     @Singleton
-    fun provideNovelRepository(novelSource: NovelSource, novelDao: NovelDao): NovelRepository {
-        return NovelRepository(novelSource, novelDao)
+    fun provideNovelRepository(sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>, novelDao: NovelDao): NovelRepository {
+        return NovelRepository(sources, novelDao)
     }
 }

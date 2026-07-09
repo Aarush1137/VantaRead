@@ -11,18 +11,22 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class NovelRepository @Inject constructor(
-    private val novelSource: NovelSource,
+    private val sources: Map<String, @JvmSuppressWildcards NovelSource>,
     private val novelDao: NovelDao
 ) {
 
-    // --- Network Calls ---
-    
-    suspend fun searchNovels(query: String): List<Novel> {
-        return novelSource.searchNovels(query)
+    private fun getSource(sourceId: String): NovelSource {
+        return sources[sourceId] ?: throw IllegalArgumentException("Source \$sourceId not found")
     }
 
-    suspend fun getNovelDetails(novelUrl: String): NovelDetails {
-        val details = novelSource.getNovelDetails(novelUrl)
+    // --- Network Calls ---
+    
+    suspend fun searchNovels(query: String, sourceId: String): List<Novel> {
+        return getSource(sourceId).searchNovels(query)
+    }
+
+    suspend fun getNovelDetails(novelUrl: String, sourceId: String): NovelDetails {
+        val details = getSource(sourceId).getNovelDetails(novelUrl)
         // Optionally update the local DB if it's bookmarked
         val existing = novelDao.getNovel(novelUrl)
         if (existing != null) {
@@ -41,16 +45,16 @@ class NovelRepository @Inject constructor(
         return details
     }
 
-    suspend fun fetchAndCacheChapters(novelUrl: String): List<Chapter> {
-        val chapters = novelSource.getChapterList(novelUrl)
+    suspend fun fetchAndCacheChapters(novelUrl: String, sourceId: String): List<Chapter> {
+        val chapters = getSource(sourceId).getChapterList(novelUrl)
         novelDao.insertChapters(chapters.map {
             ChapterEntity(it.url, it.novelUrl, it.title, it.index)
         })
         return chapters
     }
 
-    suspend fun getChapterContent(chapterUrl: String): String {
-        return novelSource.getChapterContent(chapterUrl)
+    suspend fun getChapterContent(chapterUrl: String, sourceId: String): String {
+        return getSource(sourceId).getChapterContent(chapterUrl)
     }
 
     // --- Local DB Calls ---
