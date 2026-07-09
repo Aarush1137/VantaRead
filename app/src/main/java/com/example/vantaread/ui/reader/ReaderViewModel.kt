@@ -25,9 +25,12 @@ class ReaderViewModel @Inject constructor(
     val content: StateFlow<String?> = _content.asStateFlow()
 
     fun initialize(chapterUrl: String, sourceId: String) {
-        if (this.chapterUrl.isNotEmpty()) return
+        if (this.chapterUrl == chapterUrl) return
         this.chapterUrl = chapterUrl
         this.sourceId = sourceId
+        
+        _content.value = null
+        
         loadChapter()
     }
 
