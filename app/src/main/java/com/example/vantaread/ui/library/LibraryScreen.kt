@@ -3,6 +3,7 @@ package com.example.vantaread.ui.library
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
@@ -16,7 +17,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.example.vantaread.data.db.NovelEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,49 +44,57 @@ fun LibraryScreen(
             }
         }
     ) { padding ->
-        if (novels.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Your library is empty. Here are some suggestions:")
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 120.dp),
+            contentPadding = PaddingValues(8.dp),
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            if (novels.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "My Bookmarks",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+                    )
                 }
-                
-                if (popularNovels.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 120.dp),
-                        contentPadding = PaddingValues(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(popularNovels) { novel ->
-                            NovelItemUi(
-                                title = novel.title,
-                                coverUrl = novel.coverUrl,
-                                onClick = { onNovelClick(novel.url, "wtr-lab") }
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 120.dp),
-                contentPadding = PaddingValues(8.dp),
-                modifier = Modifier.fillMaxSize().padding(padding)
-            ) {
                 items(novels) { novel ->
                     NovelItemUi(
                         title = novel.title,
                         coverUrl = novel.coverUrl,
                         onClick = { onNovelClick(novel.url, novel.sourceId) }
                     )
+                }
+            } else if (popularNovels.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Your library is empty.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+                    )
+                }
+            }
+            
+            if (popularNovels.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Suggestions",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+                    )
+                }
+                items(popularNovels) { novel ->
+                    NovelItemUi(
+                        title = novel.title,
+                        coverUrl = novel.coverUrl,
+                        onClick = { onNovelClick(novel.url, "wtr-lab") }
+                    )
+                }
+            } else if (novels.isEmpty()) {
+                // If both are empty (still loading popular novels)
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
         }
@@ -121,4 +129,3 @@ fun NovelItemUi(title: String, coverUrl: String, onClick: () -> Unit) {
         }
     }
 }
-
