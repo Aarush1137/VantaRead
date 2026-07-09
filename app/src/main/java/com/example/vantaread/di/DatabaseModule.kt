@@ -2,8 +2,8 @@ package com.example.vantaread.di
 
 import android.content.Context
 import androidx.room.Room
-import com.example.vantaread.data.local.AppDatabase
-import com.example.vantaread.data.local.NovelDao
+import com.example.vantaread.data.db.AppDatabase
+import com.example.vantaread.data.db.NovelDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
