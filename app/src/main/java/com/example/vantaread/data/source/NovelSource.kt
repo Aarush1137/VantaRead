@@ -5,6 +5,9 @@ import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 
 interface NovelSource {
+    val sourceId: String
+    val sourceName: String
+
     suspend fun searchNovels(query: String): List<Novel>
     suspend fun getNovelDetails(novelUrl: String): NovelDetails
     suspend fun getChapterList(novelUrl: String): List<Chapter>
