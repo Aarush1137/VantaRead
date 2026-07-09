@@ -18,9 +18,15 @@ import android.widget.TextView
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
+    chapterUrl: String,
+    sourceId: String,
     onNavigateBack: () -> Unit,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(chapterUrl, sourceId) {
+        viewModel.initialize(chapterUrl, sourceId)
+    }
+
     val content by viewModel.content.collectAsState()
 
     Scaffold(

@@ -31,12 +31,16 @@ fun MainNavigation() {
             }
             entry<NovelDetail> { navKey ->
                 NovelDetailScreen(
+                    novelUrl = navKey.novelUrl,
+                    sourceId = navKey.sourceId,
                     onNavigateBack = { backStack.removeLast() },
                     onChapterClick = { chapterUrl, sourceId -> backStack.add(Reader(chapterUrl, sourceId)) }
                 )
             }
             entry<Reader> { navKey ->
                 ReaderScreen(
+                    chapterUrl = navKey.chapterUrl,
+                    sourceId = navKey.sourceId,
                     onNavigateBack = { backStack.removeLast() }
                 )
             }
