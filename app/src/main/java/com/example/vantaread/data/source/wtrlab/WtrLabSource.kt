@@ -77,15 +77,22 @@ class WtrLabSource : NovelSource {
         val doc = Jsoup.connect(novelUrl).userAgent(userAgent).get()
             
         val chapters = mutableListOf<Chapter>()
-        // TODO: Selectors need adjustment
-        val elements = doc.select(".chapter-list a, .chapters a")
+        val uniqueUrls = mutableSetOf<String>()
         
-        elements.forEachIndexed { index, element ->
+        // Find any link that points to a chapter for this novel
+        val elements = doc.select("a[href*=/chapter]")
+        
+        for (element in elements) {
             val url = element.attr("href").let { if (it.startsWith("http")) it else "$baseUrl$it" }
-            val title = element.text()
-            chapters.add(Chapter(url, novelUrl, title, index))
+            val title = element.text().trim()
+            
+            // Only add if it's a valid title and we haven't added this chapter URL yet
+            if (title.isNotEmpty() && uniqueUrls.add(url)) {
+                chapters.add(Chapter(url, novelUrl, title, chapters.size))
+            }
         }
         
+        // Reverse if they are sorted newest first, but usually WTR lab lists them in order or we can just rely on the page order.
         chapters
     }
 
