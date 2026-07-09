@@ -61,7 +61,16 @@ class NovelFullSource(private val context: Context) : NovelSource {
         val coverUrl = baseUrl + (doc.selectFirst(".book img")?.attr("src") ?: "")
         val synopsis = doc.selectFirst(".desc-text")?.text() ?: ""
         
-        NovelDetails(novelUrl, title, coverUrl, synopsis, sourceId)
+        NovelDetails(
+            url = novelUrl,
+            title = title,
+            coverUrl = coverUrl,
+            synopsis = synopsis,
+            author = "",
+            genres = emptyList(),
+            status = "",
+            latestUpdate = ""
+        )
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {

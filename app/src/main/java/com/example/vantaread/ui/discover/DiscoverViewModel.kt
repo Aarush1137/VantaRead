@@ -22,17 +22,18 @@ class DiscoverViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Default to wtr-lab for now
-    var currentSourceId = "wtr-lab"
+    var currentSourceId = "royalroad"
 
     fun search(query: String) {
         if (query.isBlank()) return
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _searchResults.value = novelRepository.searchNovels(query, currentSourceId)
+                val results = novelRepository.searchNovels(query, currentSourceId)
+                android.util.Log.d("DiscoverViewModel", "Search results for '$query': ${results.size}")
+                _searchResults.value = results
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("DiscoverViewModel", "Search error", e)
                 _searchResults.value = emptyList()
             } finally {
                 _isLoading.value = false

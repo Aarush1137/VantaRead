@@ -36,9 +36,10 @@ class ReaderViewModel @Inject constructor(
             try {
                 // Fetch from network for now
                 val htmlContent = novelRepository.getChapterContent(chapterUrl, sourceId)
+                android.util.Log.d("ReaderViewModel", "Chapter loaded, length: ${htmlContent.length}")
                 _content.value = htmlContent
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("ReaderViewModel", "Chapter load error", e)
                 _content.value = "Failed to load chapter content."
             }
         }

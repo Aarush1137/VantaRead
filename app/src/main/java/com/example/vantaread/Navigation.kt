@@ -1,6 +1,20 @@
 package com.example.vantaread
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -16,11 +30,11 @@ fun MainNavigation() {
     
     val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is History
 
-    androidx.compose.material3.Scaffold(
+    Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                androidx.compose.material3.NavigationBar {
-                    androidx.compose.material3.NavigationBarItem(
+                NavigationBar {
+                    NavigationBarItem(
                         selected = currentRoute is Library,
                         onClick = { 
                             if (currentRoute !is Library) {
@@ -28,10 +42,10 @@ fun MainNavigation() {
                                 backStack.add(Library)
                             }
                         },
-                        icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Bookmarks, contentDescription = "Library") },
-                        label = { androidx.compose.material3.Text("Library") }
+                        icon = { Icon(Icons.Filled.Bookmarks, contentDescription = "Library") },
+                        label = { Text("Library") }
                     )
-                    androidx.compose.material3.NavigationBarItem(
+                    NavigationBarItem(
                         selected = currentRoute is Discover,
                         onClick = { 
                             if (currentRoute !is Discover) {
@@ -39,10 +53,10 @@ fun MainNavigation() {
                                 backStack.add(Discover)
                             }
                         },
-                        icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Explore, contentDescription = "Discover") },
-                        label = { androidx.compose.material3.Text("Discover") }
+                        icon = { Icon(Icons.Filled.Explore, contentDescription = "Discover") },
+                        label = { Text("Discover") }
                     )
-                    androidx.compose.material3.NavigationBarItem(
+                    NavigationBarItem(
                         selected = currentRoute is History,
                         onClick = { 
                             if (currentRoute !is History) {
@@ -50,8 +64,8 @@ fun MainNavigation() {
                                 backStack.add(History)
                             }
                         },
-                        icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.History, contentDescription = "History") },
-                        label = { androidx.compose.material3.Text("History") }
+                        icon = { Icon(Icons.Filled.History, contentDescription = "History") },
+                        label = { Text("History") }
                     )
                 }
             }
@@ -60,7 +74,7 @@ fun MainNavigation() {
         NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
-            modifier = androidx.compose.ui.Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding),
             entryProvider = entryProvider {
                 entry<Library> {
                     LibraryScreen(
@@ -75,9 +89,8 @@ fun MainNavigation() {
                     )
                 }
                 entry<History> {
-                    // History Screen Placeholder
-                    androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                        androidx.compose.material3.Text("History Screen (Coming Soon)")
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("History Screen (Coming Soon)")
                     }
                 }
                 entry<NovelDetail> { navKey ->

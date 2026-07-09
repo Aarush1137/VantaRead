@@ -16,13 +16,13 @@ object WebViewScraper {
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun getHtml(context: Context, url: String): Document = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
+            var finished = false
             val webView = WebView(context)
             webView.settings.javaScriptEnabled = true
             webView.settings.domStorageEnabled = true
             webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
             
             webView.webViewClient = object : WebViewClient() {
-                var finished = false
                 var attempts = 0
                 
                 override fun onPageFinished(view: WebView, url: String) {
