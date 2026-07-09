@@ -8,6 +8,7 @@ interface NovelSource {
     val sourceId: String
     val sourceName: String
 
+    suspend fun getPopularNovels(): List<Novel>
     suspend fun searchNovels(query: String): List<Novel>
     suspend fun getNovelDetails(novelUrl: String): NovelDetails
     suspend fun getChapterList(novelUrl: String): List<Chapter>
