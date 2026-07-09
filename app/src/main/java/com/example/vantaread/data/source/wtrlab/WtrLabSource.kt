@@ -10,6 +10,8 @@ import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
 class WtrLabSource : NovelSource {
+    override val sourceId = "wtr-lab"
+    override val sourceName = "WTR Lab"
     private val baseUrl = "https://wtr-lab.com"
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
 
