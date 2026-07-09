@@ -15,12 +15,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NovelDetailViewModel @Inject constructor(
-    private val novelRepository: NovelRepository,
-    savedStateHandle: SavedStateHandle
+    private val novelRepository: NovelRepository
 ) : ViewModel() {
 
-    private val novelUrl: String = checkNotNull(savedStateHandle["novelUrl"])
-    val sourceId: String = checkNotNull(savedStateHandle["sourceId"])
+    var novelUrl: String = ""
+        private set
+    var sourceId: String = ""
+        private set
 
     private val _novelDetails = MutableStateFlow<NovelDetails?>(null)
     val novelDetails: StateFlow<NovelDetails?> = _novelDetails.asStateFlow()
@@ -31,7 +32,10 @@ class NovelDetailViewModel @Inject constructor(
     private val _isBookmarked = MutableStateFlow(false)
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
-    init {
+    fun initialize(novelUrl: String, sourceId: String) {
+        if (this.novelUrl.isNotEmpty()) return // already initialized
+        this.novelUrl = novelUrl
+        this.sourceId = sourceId
         loadNovelDetails()
         checkBookmarkStatus()
     }

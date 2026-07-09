@@ -13,17 +13,21 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
-    private val novelRepository: NovelRepository,
-    savedStateHandle: SavedStateHandle
+    private val novelRepository: NovelRepository
 ) : ViewModel() {
 
-    private val chapterUrl: String = checkNotNull(savedStateHandle["chapterUrl"])
-    private val sourceId: String = checkNotNull(savedStateHandle["sourceId"])
+    var chapterUrl: String = ""
+        private set
+    var sourceId: String = ""
+        private set
 
     private val _content = MutableStateFlow<String?>(null)
     val content: StateFlow<String?> = _content.asStateFlow()
 
-    init {
+    fun initialize(chapterUrl: String, sourceId: String) {
+        if (this.chapterUrl.isNotEmpty()) return
+        this.chapterUrl = chapterUrl
+        this.sourceId = sourceId
         loadChapter()
     }
 

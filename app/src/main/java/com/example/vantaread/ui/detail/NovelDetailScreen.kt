@@ -24,10 +24,16 @@ import coil.compose.AsyncImage
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NovelDetailScreen(
+    novelUrl: String,
+    sourceId: String,
     onNavigateBack: () -> Unit,
     onChapterClick: (String, String) -> Unit, // chapterUrl, sourceId
     viewModel: NovelDetailViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(novelUrl, sourceId) {
+        viewModel.initialize(novelUrl, sourceId)
+    }
+
     val details by viewModel.novelDetails.collectAsState()
     val chapters by viewModel.chapters.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
