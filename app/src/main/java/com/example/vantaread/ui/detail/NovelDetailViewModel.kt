@@ -33,9 +33,14 @@ class NovelDetailViewModel @Inject constructor(
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
     fun initialize(novelUrl: String, sourceId: String) {
-        if (this.novelUrl.isNotEmpty()) return // already initialized
+        if (this.novelUrl == novelUrl) return
         this.novelUrl = novelUrl
         this.sourceId = sourceId
+        
+        _novelDetails.value = null
+        _chapters.value = emptyList()
+        _isBookmarked.value = false
+        
         loadNovelDetails()
         checkBookmarkStatus()
     }
