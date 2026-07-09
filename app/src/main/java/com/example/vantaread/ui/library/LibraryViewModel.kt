@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,4 +23,22 @@ class LibraryViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _popularNovels = MutableStateFlow<List<com.example.vantaread.data.model.Novel>>(emptyList())
+    val popularNovels: StateFlow<List<com.example.vantaread.data.model.Novel>> = _popularNovels
+
+    init {
+        fetchPopularNovels()
+    }
+
+    private fun fetchPopularNovels() {
+        viewModelScope.launch {
+            try {
+                // For now, hardcode "wtr-lab" as the default source for dashboard suggestions
+                _popularNovels.value = novelRepository.getPopularNovels("wtr-lab")
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
 }

@@ -15,23 +15,43 @@ class WtrLabSource : NovelSource {
     private val baseUrl = "https://wtr-lab.com"
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
 
+    override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
+        val url = "$baseUrl/en/"
+        val doc = Jsoup.connect(url).userAgent(userAgent).get()
+        
+        val novels = mutableListOf<Novel>()
+        val elements = doc.select("a[href^=/en/novel/]:has(img)")
+        
+        for (element in elements) {
+            val novelUrl = element.attr("href").let { if (it.startsWith("http")) it else "$baseUrl$it" }
+            val imgElement = element.selectFirst("img")
+            val coverUrl = imgElement?.attr("src")?.let { if (it.startsWith("http")) it else "$baseUrl$it" } ?: ""
+            val title = imgElement?.attr("alt") ?: ""
+            
+            if (title.isNotEmpty() && novels.none { it.url == novelUrl }) {
+                novels.add(Novel(novelUrl, title, coverUrl, author = "", status = ""))
+            }
+        }
+        
+        novels.take(12)
+    }
+
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val searchUrl = "$baseUrl/en/series?search=$query"
+        val searchUrl = "$baseUrl/en/novel-list?search=$query"
         val doc = Jsoup.connect(searchUrl).userAgent(userAgent).get()
         
         val novels = mutableListOf<Novel>()
-        // TODO: Selectors need adjustment based on actual wtr-lab.com HTML
-        val elements = doc.select(".series-item, .search-result-item") // Placeholder
+        val elements = doc.select("a[href^=/en/novel/]:has(img)")
         
         for (element in elements) {
-            val titleElement = element.selectFirst("a")
-            val url = titleElement?.attr("href")?.let { if (it.startsWith("http")) it else "$baseUrl$it" } ?: continue
-            val title = titleElement.text()
-            val coverUrl = element.selectFirst("img")?.attr("src") ?: ""
-            val author = element.selectFirst(".author")?.text() ?: ""
-            val status = element.selectFirst(".status")?.text() ?: ""
+            val url = element.attr("href").let { if (it.startsWith("http")) it else "$baseUrl$it" }
+            val imgElement = element.selectFirst("img")
+            val title = imgElement?.attr("alt") ?: ""
+            val coverUrl = imgElement?.attr("src")?.let { if (it.startsWith("http")) it else "$baseUrl$it" } ?: ""
             
-            novels.add(Novel(url, title, coverUrl, author = author, status = status))
+            if (title.isNotEmpty() && novels.none { it.url == url }) {
+                novels.add(Novel(url, title, coverUrl, author = "", status = ""))
+            }
         }
         
         novels

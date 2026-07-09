@@ -25,6 +25,10 @@ class NovelRepository @Inject constructor(
         return getSource(sourceId).searchNovels(query)
     }
 
+    suspend fun getPopularNovels(sourceId: String): List<Novel> {
+        return getSource(sourceId).getPopularNovels()
+    }
+
     suspend fun getNovelDetails(novelUrl: String, sourceId: String): NovelDetails {
         val details = getSource(sourceId).getNovelDetails(novelUrl)
         // Optionally update the local DB if it's bookmarked
