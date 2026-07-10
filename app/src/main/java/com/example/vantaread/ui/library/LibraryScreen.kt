@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.vantaread.data.db.ReadingHistoryEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.MoreVert
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,8 +52,42 @@ fun LibraryScreen(
                 ),
                 actions = {
                     var showSortMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    var showSourceMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                     val currentSort by viewModel.currentSortOption.collectAsState()
+                    val activeSourceId by viewModel.activeSourceId.collectAsState()
                     
+                    val sources = mapOf(
+                        "novelfull" to "NovelFull",
+                        "wtr-lab" to "WTR Lab",
+                        "royalroad" to "Royal Road",
+                        "lightnovelpub" to "LightNovelPub"
+                    )
+
+                    IconButton(onClick = { showSourceMenu = true }) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
+                            contentDescription = "Select Source"
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showSourceMenu,
+                        onDismissRequest = { showSourceMenu = false }
+                    ) {
+                        sources.forEach { (id, name) ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    viewModel.setActiveSource(id)
+                                    showSourceMenu = false
+                                },
+                                trailingIcon = if (activeSourceId == id) {
+                                    { Text("✓") }
+                                } else null
+                            )
+                        }
+                    }
+
                     IconButton(onClick = { showSortMenu = true }) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Sort,

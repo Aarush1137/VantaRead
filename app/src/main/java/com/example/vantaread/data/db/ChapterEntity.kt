@@ -21,5 +21,7 @@ data class ChapterEntity(
     @PrimaryKey val url: String,
     val novelUrl: String,
     val title: String,
-    val chapterIndex: Int
+    val chapterIndex: Int,
+    val content: String? = null,
+    val isDownloaded: Boolean = false
 )

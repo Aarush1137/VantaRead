@@ -27,6 +27,12 @@ interface NovelDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChapters(chapters: List<ChapterEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChapter(chapter: ChapterEntity)
+
+    @Query("SELECT * FROM chapters WHERE url = :chapterUrl")
+    suspend fun getChapter(chapterUrl: String): ChapterEntity?
+
     @Query("SELECT * FROM chapters WHERE novelUrl = :novelUrl ORDER BY chapterIndex ASC")
     fun getChaptersForNovel(novelUrl: String): Flow<List<ChapterEntity>>
     

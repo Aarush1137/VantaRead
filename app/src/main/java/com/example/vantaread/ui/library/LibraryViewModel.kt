@@ -62,6 +62,12 @@ class LibraryViewModel @Inject constructor(
     private val _isLoadingPopularNovels = MutableStateFlow(true)
     val isLoadingPopularNovels: StateFlow<Boolean> = _isLoadingPopularNovels
 
+    val activeSourceId: StateFlow<String> = sourcePrefs.activeSourceId
+
+    fun setActiveSource(sourceId: String) {
+        sourcePrefs.setActiveSource(sourceId)
+    }
+
     fun setSortOption(option: SortOption) {
         currentSortOption.value = option
     }
