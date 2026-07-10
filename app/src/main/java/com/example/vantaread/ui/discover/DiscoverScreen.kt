@@ -43,7 +43,7 @@ fun DiscoverScreen(
         "lightnovelpub" to "LightNovelPub"
     )
 
-    Scaffold(
+        Scaffold(
         topBar = {
             TopAppBar(
                 title = {

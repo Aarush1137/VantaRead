@@ -177,30 +177,6 @@ fun LibraryScreen(
                     )
                 }
             }
-            
-            if (popularNovels.isNotEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        text = "Suggestions",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
-                    )
-                }
-                gridItems(popularNovels) { novel ->
-                    NovelItemUi(
-                        title = novel.title,
-                        coverUrl = novel.coverUrl,
-                        onClick = { onNovelClick(novel.url, "wtr-lab") }
-                    )
-                }
-            } else if (isLoadingPopularNovels && novels.isEmpty() && recentReads.isEmpty()) {
-                // If both are empty and it's still loading popular novels
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
         }
     }
 }

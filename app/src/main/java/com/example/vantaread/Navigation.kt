@@ -3,8 +3,9 @@ package com.example.vantaread
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -20,13 +21,14 @@ import com.example.vantaread.ui.discover.DiscoverScreen
 import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
+import com.example.vantaread.ui.suggestions.SuggestionsScreen
 
 @Composable
 fun MainNavigation() {
     val backStack = rememberNavBackStack(Library)
     val currentRoute = backStack.lastOrNull()
     
-    val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is History
+    val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is Suggestions || currentRoute is History
 
     Scaffold(
         bottomBar = {
@@ -51,8 +53,19 @@ fun MainNavigation() {
                                 backStack.add(Discover)
                             }
                         },
-                        icon = { Icon(Icons.Filled.Explore, contentDescription = "Discover") },
-                        label = { Text("Discover") }
+                        icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                        label = { Text("Search") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute is Suggestions,
+                        onClick = { 
+                            if (currentRoute !is Suggestions) {
+                                backStack.clear()
+                                backStack.add(Suggestions)
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Explore, contentDescription = "Suggestions") },
+                        label = { Text("Suggestions") }
                     )
                     NavigationBarItem(
                         selected = currentRoute is History,
@@ -85,6 +98,12 @@ fun MainNavigation() {
                 }
                 entry<Discover> {
                     DiscoverScreen(
+                        onNavigateBack = { backStack.removeLast() },
+                        onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
+                    )
+                }
+                entry<Suggestions> {
+                    SuggestionsScreen(
                         onNavigateBack = { backStack.removeLast() },
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
                     )

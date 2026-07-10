@@ -9,6 +9,7 @@ import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.net.URLEncoder
 
 class LightNovelPubSource(private val context: Context) : NovelSource {
     override val sourceId: String = "lightnovelpub"
@@ -38,7 +39,7 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/search?keyword=${query.replace(" ", "+")}"
+        val url = "$baseUrl/search?keyword=${URLEncoder.encode(query, "UTF-8")}"
         val doc = WebViewScraper.getHtml(context, url)
         
         val novels = mutableListOf<Novel>()

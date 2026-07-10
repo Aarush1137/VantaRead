@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
+import java.net.URLEncoder
 
 class WtrLabSource(private val context: Context) : NovelSource {
     override val sourceId = "wtr-lab"
@@ -39,7 +40,7 @@ class WtrLabSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val searchUrl = "$baseUrl/en/novel-list?search=$query"
+        val searchUrl = "$baseUrl/en/novel-list?search=${URLEncoder.encode(query, "UTF-8")}"
         val doc = WebViewScraper.getHtml(context, searchUrl)
         
         val novels = mutableListOf<Novel>()
