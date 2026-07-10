@@ -15,8 +15,8 @@ import javax.inject.Inject
 class WtrLabSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NovelSource {
-    override val id: String = "wtrlab"
-    override val name: String = "WTR-Lab"
+    override val sourceId: String = "wtrlab"
+    override val sourceName: String = "WTR-Lab"
     private val baseUrl = "https://wtr-lab.com"
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
@@ -30,8 +30,7 @@ class WtrLabSource @Inject constructor(
             Novel(
                 url = baseUrl + aElement?.attr("href"),
                 title = aElement?.text() ?: "Unknown",
-                coverUrl = imgElement?.attr("src") ?: "",
-                sourceId = id
+                coverUrl = imgElement?.attr("src") ?: ""
             )
         }
     }
@@ -47,8 +46,7 @@ class WtrLabSource @Inject constructor(
             Novel(
                 url = baseUrl + aElement?.attr("href"),
                 title = aElement?.text() ?: "Unknown",
-                coverUrl = imgElement?.attr("src") ?: "",
-                sourceId = id
+                coverUrl = imgElement?.attr("src") ?: ""
             )
         }
     }
@@ -82,8 +80,7 @@ class WtrLabSource @Inject constructor(
             author = author,
             genres = genres,
             status = status,
-            latestUpdate = "",
-            sourceId = id
+            latestUpdate = ""
         )
     }
 

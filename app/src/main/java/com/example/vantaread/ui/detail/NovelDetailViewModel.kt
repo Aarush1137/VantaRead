@@ -18,7 +18,6 @@ import androidx.work.Data
 import com.example.vantaread.worker.ChapterDownloadWorker
 
 @HiltViewModel
-@HiltViewModel
 class NovelDetailViewModel @Inject constructor(
     private val novelRepository: NovelRepository,
     private val workManager: WorkManager

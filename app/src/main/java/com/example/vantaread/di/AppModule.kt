@@ -44,12 +44,18 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelSources(
-        novelFullSource: NovelFullSource,
-        royalRoadSource: RoyalRoadSource,
-        lightNovelPubSource: LightNovelPubSource,
-        wtrLabSource: WtrLabSource
-    ): Map<String, @JvmSuppressWildcards NovelSource> {
+    fun provideWorkManager(@ApplicationContext context: Context): androidx.work.WorkManager {
+        return androidx.work.WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNovelSources(@ApplicationContext context: Context): Map<String, @JvmSuppressWildcards NovelSource> {
+        val novelFullSource = NovelFullSource(context)
+        val royalRoadSource = RoyalRoadSource(context)
+        val lightNovelPubSource = LightNovelPubSource(context)
+        val wtrLabSource = WtrLabSource(context)
+        
         return mapOf(
             novelFullSource.sourceId to novelFullSource,
             royalRoadSource.sourceId to royalRoadSource,

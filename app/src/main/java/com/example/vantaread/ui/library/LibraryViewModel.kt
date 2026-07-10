@@ -92,4 +92,43 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
+
+    private val _addNovelResult = MutableStateFlow<Result<String>?>(null)
+    val addNovelResult: StateFlow<Result<String>?> = _addNovelResult
+
+    fun clearAddNovelResult() {
+        _addNovelResult.value = null
+    }
+
+    fun addNovelViaUrl(url: String) {
+        viewModelScope.launch {
+            val sourceId = when {
+                url.contains("novelfull.com") -> "novelfull"
+                url.contains("royalroad.com") -> "royalroad"
+                url.contains("lightnovelpub.vip") || url.contains("lightnovelpub.com") -> "lightnovelpub"
+                url.contains("wtr-lab.com") -> "wtrlab"
+                else -> null
+            }
+            
+            if (sourceId == null) {
+                _addNovelResult.value = Result.failure(Exception("Unsupported URL or Source"))
+                return@launch
+            }
+            
+            try {
+                val details = novelRepository.getNovelDetails(url, sourceId)
+                novelRepository.fetchAndCacheChapters(url, sourceId)
+                
+                // Add to bookmark if not already
+                val existing = novelRepository.getNovelFromDb(url)
+                if (existing?.isBookmarked != true) {
+                    novelRepository.toggleBookmark(details, sourceId)
+                }
+                
+                _addNovelResult.value = Result.success(details.title)
+            } catch (e: Exception) {
+                _addNovelResult.value = Result.failure(e)
+            }
+        }
+    }
 }

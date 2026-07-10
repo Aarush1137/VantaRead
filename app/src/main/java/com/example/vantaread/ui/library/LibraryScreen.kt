@@ -28,6 +28,9 @@ import com.example.vantaread.data.db.ReadingHistoryEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +44,25 @@ fun LibraryScreen(
     val popularNovels by viewModel.popularNovels.collectAsState()
     val recentReads by viewModel.recentReads.collectAsState()
     val isLoadingPopularNovels by viewModel.isLoadingPopularNovels.collectAsState()
+    val addNovelResult by viewModel.addNovelResult.collectAsState()
+    
+    var showAddUrlDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var urlToPaste by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
+
+    LaunchedEffect(addNovelResult) {
+        addNovelResult?.let { result ->
+            if (result.isSuccess) {
+                snackbarHostState.showSnackbar("Added ${result.getOrNull()} to library!")
+            } else {
+                snackbarHostState.showSnackbar("Failed: ${result.exceptionOrNull()?.message}")
+            }
+            viewModel.clearAddNovelResult()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("VantaRead Library") },
@@ -115,6 +135,13 @@ fun LibraryScreen(
                             )
                         }
                     }
+                    
+                    IconButton(onClick = { showAddUrlDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add via URL"
+                        )
+                    }
                 }
             )
         },
@@ -177,6 +204,45 @@ fun LibraryScreen(
                     )
                 }
             }
+        }
+        
+        if (showAddUrlDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddUrlDialog = false },
+                title = { Text("Add via URL") },
+                text = {
+                    OutlinedTextField(
+                        value = urlToPaste,
+                        onValueChange = { urlToPaste = it },
+                        label = { Text("Novel URL") },
+                        placeholder = { Text("https://...") },
+                        leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (urlToPaste.isNotBlank()) {
+                                viewModel.addNovelViaUrl(urlToPaste)
+                            }
+                            showAddUrlDialog = false
+                            urlToPaste = ""
+                        }
+                    ) {
+                        Text("Add")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showAddUrlDialog = false 
+                        urlToPaste = ""
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
