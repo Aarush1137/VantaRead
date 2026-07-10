@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.vantaread.data.db.ReadingHistoryEntity
 import com.example.vantaread.data.prefs.SourcePreferencesManager
-import javax.inject.Inject
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
