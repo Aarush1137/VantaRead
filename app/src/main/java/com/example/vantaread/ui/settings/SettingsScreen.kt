@@ -108,6 +108,47 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            val currentBatchAmount by viewModel.batchDownloadAmount.collectAsState()
+            
+            val batchAmounts = listOf(
+                0 to "Disabled",
+                5 to "Next 5 chapters",
+                10 to "Next 10 chapters",
+                100 to "All chapters"
+            )
+
+            Text(
+                text = "Downloads",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Text(
+                text = "Automatically download chapters when adding a novel or reading.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            batchAmounts.forEach { (amount, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setBatchDownloadAmount(amount) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = currentBatchAmount == amount,
+                        onClick = { viewModel.setBatchDownloadAmount(amount) }
+                    )
+                    Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
                 text = "Data",
                 style = MaterialTheme.typography.titleMedium,

@@ -59,7 +59,14 @@ class NovelRepository @Inject constructor(
     suspend fun fetchAndCacheChapters(novelUrl: String, sourceId: String): List<Chapter> {
         val chapters = getSource(sourceId).getChapterList(novelUrl)
         novelDao.insertChapters(chapters.map {
-            ChapterEntity(it.url, it.novelUrl, it.title, it.index)
+            ChapterEntity(
+                url = it.url,
+                novelUrl = novelUrl, // Enforce exact match to prevent FK constraint failures
+                title = it.title,
+                chapterIndex = it.index,
+                isDownloaded = false,
+                content = null
+            )
         })
         return chapters
     }
@@ -69,7 +76,11 @@ class NovelRepository @Inject constructor(
         if (chapterEntity?.isDownloaded == true && !chapterEntity.content.isNullOrBlank()) {
             return chapterEntity.content
         }
-        return getSource(sourceId).getChapterContent(chapterUrl)
+        return try {
+            getSource(sourceId).getChapterContent(chapterUrl)
+        } catch (e: Exception) {
+            "Error loading chapter content: ${e.message}"
+        }
     }
 
     // --- Local DB Calls ---

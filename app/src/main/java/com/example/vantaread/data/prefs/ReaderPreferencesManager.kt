@@ -53,6 +53,14 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
         _defaultSource.value = sourceId
     }
 
+    private val _batchDownloadAmount = MutableStateFlow(prefs.getInt("batch_download", 0))
+    val batchDownloadAmount: StateFlow<Int> = _batchDownloadAmount.asStateFlow()
+
+    fun setBatchDownloadAmount(amount: Int) {
+        prefs.edit().putInt("batch_download", amount).apply()
+        _batchDownloadAmount.value = amount
+    }
+
     fun updateSettings(newSettings: ReaderSettings) {
         prefs.edit().apply {
             putString("theme", newSettings.themeMode.name)

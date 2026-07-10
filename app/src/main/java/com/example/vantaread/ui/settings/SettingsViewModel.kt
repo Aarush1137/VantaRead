@@ -35,6 +35,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    val batchDownloadAmount: StateFlow<Int> = preferencesManager.batchDownloadAmount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun setBatchDownloadAmount(amount: Int) {
+        viewModelScope.launch {
+            preferencesManager.setBatchDownloadAmount(amount)
+        }
+    }
+
     fun clearCache() {
         viewModelScope.launch {
             novelRepository.clearHistory()
