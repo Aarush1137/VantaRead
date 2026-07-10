@@ -24,6 +24,7 @@ object WebViewScraper {
             
             webView.webViewClient = object : WebViewClient() {
                 var attempts = 0
+                var checkerScheduled = false
                 
                 override fun onReceivedError(
                     view: WebView,
@@ -33,45 +34,52 @@ object WebViewScraper {
                     super.onReceivedError(view, request, error)
                     if (finished) return
                     finished = true
-                    continuation.resumeWith(Result.success(Jsoup.parse("<html><body>Error: ${error.description}</body></html>")))
+                    if (continuation.isActive) continuation.resumeWith(Result.success(Jsoup.parse("<html><body>Error: ${error.description}</body></html>")))
                     view.destroy()
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
-                    if (finished) return
-                    attempts++
+                    if (finished || checkerScheduled) return
+                    checkerScheduled = true
                     
-                    val checkHtml = Runnable {
-                        view.evaluateJavascript(
-                            "(function() { return ('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>'); })();"
-                        ) { html ->
-                            if (finished) return@evaluateJavascript
+                    val checkHtml = object : Runnable {
+                        override fun run() {
+                            if (finished) return
+                            attempts++
                             
-                            val unescapedHtml = html?.drop(1)?.dropLast(1)
-                                ?.replace("\\u003C", "<")
-                                ?.replace("\\\"", "\"")
-                                ?.replace("\\\\\"", "\\\"")
-                                ?.replace("\\n", "\n")
-                                ?.replace("\\r", "\r")
-                                ?.replace("\\t", "\t") ?: ""
-                            
-                            if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...")) {
-                                // Still on Cloudflare page
-                                if (attempts > 5) {
+                            view.evaluateJavascript(
+                                "(function() { return ('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>'); })();"
+                            ) { html ->
+                                if (finished) return@evaluateJavascript
+                                
+                                val unescapedHtml = html?.drop(1)?.dropLast(1)
+                                    ?.replace("\\u003C", "<")
+                                    ?.replace("\\\"", "\"")
+                                    ?.replace("\\\\\"", "\\\"")
+                                    ?.replace("\\n", "\n")
+                                    ?.replace("\\r", "\r")
+                                    ?.replace("\\t", "\t") ?: ""
+                                
+                                if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...")) {
+                                    // Still on Cloudflare page
+                                    if (attempts > 10) {
+                                        finished = true
+                                        if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
+                                        view.destroy()
+                                    } else {
+                                        // Check again in 2 seconds
+                                        view.postDelayed(this, 2000)
+                                    }
+                                } else {
                                     finished = true
-                                    continuation.resume(Jsoup.parse(unescapedHtml))
+                                    if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
                                     view.destroy()
                                 }
-                            } else {
-                                finished = true
-                                continuation.resume(Jsoup.parse(unescapedHtml))
-                                view.destroy()
                             }
                         }
                     }
                     
-                    // Cloudflare challenges take a few seconds
-                    view.postDelayed(checkHtml, 3000)
+                    view.postDelayed(checkHtml, 2000)
                 }
             }
             

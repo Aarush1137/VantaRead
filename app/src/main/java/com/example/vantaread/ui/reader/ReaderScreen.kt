@@ -218,13 +218,18 @@ fun ReaderScreen(
                         AndroidView(
                             factory = { context ->
                                 TextView(context).apply {
-                                    setLineSpacing(0f, settings.lineSpacingMultiplier)
+                                    setLineSpacing(0f, settings.lineHeight)
                                 }
                             },
                             update = { textView ->
                                 textView.textSize = settings.fontSizeSp.toFloat()
                                 textView.setTextColor(settings.themeMode.textColor.toArgb())
                                 textView.typeface = settings.fontType.androidTypeface
+                                textView.textAlignment = when (settings.textAlignment) {
+                                    "Center" -> android.view.View.TEXT_ALIGNMENT_CENTER
+                                    "Right" -> android.view.View.TEXT_ALIGNMENT_VIEW_END
+                                    else -> android.view.View.TEXT_ALIGNMENT_VIEW_START
+                                }
                                 textView.text = HtmlCompat.fromHtml(paragraph, HtmlCompat.FROM_HTML_MODE_COMPACT)
                             },
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -467,6 +472,52 @@ fun BottomControlBar(
                         onClick = { if (settings.horizontalMarginDp < 64) onSettingsChanged(settings.copy(horizontalMarginDp = settings.horizontalMarginDp + 8)) },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
                     ) { Text("+", color = Color.White) }
+                }
+            }
+
+            // Line Height
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Line Height (%.1f)".format(settings.lineHeight), style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { if (settings.lineHeight > 1.0f) onSettingsChanged(settings.copy(lineHeight = settings.lineHeight - 0.1f)) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) { Text("-", color = Color.White) }
+                    Button(
+                        onClick = { if (settings.lineHeight < 3.0f) onSettingsChanged(settings.copy(lineHeight = settings.lineHeight + 0.1f)) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) { Text("+", color = Color.White) }
+                }
+            }
+            
+            // Text Alignment
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Alignment", style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Left", "Center", "Right").forEach { align ->
+                        val isSelected = settings.textAlignment == align
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) accentColor else Color.DarkGray)
+                                .clickable { onSettingsChanged(settings.copy(textAlignment = align)) }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = align,
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
                 }
             }
             

@@ -1,11 +1,12 @@
 package com.example.vantaread.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.ChapterEntity
+import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.repository.NovelRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -25,17 +26,28 @@ class ChapterDownloadWorker @AssistedInject constructor(
         val sourceId = inputData.getString(KEY_SOURCE_ID) ?: return@withContext Result.failure()
 
         try {
-            // Fetch content
+            Log.d("DownloadWorker", "Starting download for $chapterUrl")
+            val chapterEntity = novelDao.getChapter(chapterUrl) ?: return@withContext Result.failure()
+            
+            if (chapterEntity.isDownloaded && !chapterEntity.content.isNullOrBlank()) {
+                Log.d("DownloadWorker", "Chapter already downloaded")
+                return@withContext Result.success()
+            }
+
+            // Fetch from network
             val content = novelRepository.getChapterContent(chapterUrl, sourceId)
             
-            // Save to DB
-            val chapter = novelDao.getChapter(chapterUrl)
-            if (chapter != null) {
-                novelDao.insertChapter(chapter.copy(content = content, isDownloaded = true))
-            }
+            // Update database
+            val updatedChapter = chapterEntity.copy(
+                content = content,
+                isDownloaded = true
+            )
+            novelDao.insertChapter(updatedChapter)
+            
+            Log.d("DownloadWorker", "Successfully downloaded $chapterUrl")
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("DownloadWorker", "Failed to download $chapterUrl", e)
             Result.retry()
         }
     }

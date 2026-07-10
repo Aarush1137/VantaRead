@@ -19,7 +19,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/fictions/best-rated"
-        val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+        val doc = WebViewScraper.getHtml(context, url)
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".fiction-list-item")
@@ -40,7 +40,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/fictions/search?title=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+        val doc = WebViewScraper.getHtml(context, url)
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".fiction-list-item")
@@ -60,7 +60,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(novelUrl).userAgent("Mozilla/5.0").get()
+        val doc = WebViewScraper.getHtml(context, novelUrl)
         
         val title = doc.selectFirst("h1.font-white")?.text() ?: doc.title()
         val coverUrl = doc.selectFirst(".fic-header img")?.attr("src")?.let { 
@@ -93,7 +93,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(novelUrl).userAgent("Mozilla/5.0").get()
+        val doc = WebViewScraper.getHtml(context, novelUrl)
         
         val chapters = mutableListOf<Chapter>()
         val elements = doc.select("#chapters tbody tr")
@@ -110,7 +110,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(chapterUrl).userAgent("Mozilla/5.0").get()
+        val doc = WebViewScraper.getHtml(context, chapterUrl)
         
         val contentElement = doc.selectFirst(".chapter-content")
         

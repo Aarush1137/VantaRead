@@ -12,10 +12,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.work.WorkManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Data
+import com.example.vantaread.worker.ChapterDownloadWorker
 
 @HiltViewModel
+@HiltViewModel
 class NovelDetailViewModel @Inject constructor(
-    private val novelRepository: NovelRepository
+    private val novelRepository: NovelRepository,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     var novelUrl: String = ""
@@ -94,6 +100,28 @@ class NovelDetailViewModel @Inject constructor(
         viewModelScope.launch {
             novelRepository.toggleBookmark(details, sourceId)
             _isBookmarked.value = !_isBookmarked.value
+        }
+    }
+
+    fun downloadChapters(startIndex: Int, count: Int) {
+        val chapterList = _chapters.value
+        if (chapterList.isEmpty()) return
+
+        val chaptersToDownload = chapterList.drop(startIndex).take(count)
+        
+        val workRequests = chaptersToDownload.map { chapter ->
+            val data = Data.Builder()
+                .putString(ChapterDownloadWorker.KEY_CHAPTER_URL, chapter.url)
+                .putString(ChapterDownloadWorker.KEY_SOURCE_ID, sourceId)
+                .build()
+                
+            OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
+                .setInputData(data)
+                .build()
+        }
+        
+        if (workRequests.isNotEmpty()) {
+            workManager.enqueue(workRequests)
         }
     }
 }

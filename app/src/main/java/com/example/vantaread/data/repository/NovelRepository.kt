@@ -61,6 +61,10 @@ class NovelRepository @Inject constructor(
     }
 
     suspend fun getChapterContent(chapterUrl: String, sourceId: String): String {
+        val chapterEntity = novelDao.getChapter(chapterUrl)
+        if (chapterEntity?.isDownloaded == true && !chapterEntity.content.isNullOrBlank()) {
+            return chapterEntity.content
+        }
         return getSource(sourceId).getChapterContent(chapterUrl)
     }
 

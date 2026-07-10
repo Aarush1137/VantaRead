@@ -10,6 +10,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -115,20 +117,56 @@ fun NovelDetailScreen(
                     Text(text = "Synopsis", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(text = details!!.synopsis, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
                     
-                    Text(text = "Chapters", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Chapters", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { 
+                            // Download next 10 unread chapters
+                            val unreadIndex = chapters.indexOfFirst { !readChapterUrls.contains(it.url) }
+                            val startIndex = if (unreadIndex >= 0) unreadIndex else 0
+                            viewModel.downloadChapters(startIndex, 10)
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Download 10")
+                        }
+                    }
                 }
                 
-                items(chapters) { chapter ->
+                items(chapters.withIndex().toList()) { (index, chapter) ->
                     ListItem(
                         headlineContent = { Text(chapter.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         trailingContent = {
-                            if (readChapterUrls.contains(chapter.url)) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = "Read",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (chapter.isDownloaded) {
+                                    Icon(
+                                        Icons.Default.DownloadDone,
+                                        contentDescription = "Downloaded",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                    )
+                                } else {
+                                    IconButton(onClick = { viewModel.downloadChapters(index, 1) }, modifier = Modifier.size(32.dp)) {
+                                        Icon(
+                                            Icons.Default.Download,
+                                            contentDescription = "Download",
+                                            tint = LocalContentColor.current.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                if (readChapterUrls.contains(chapter.url)) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Read",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.clickable { onChapterClick(chapter.url, viewModel.sourceId, chapter.title) }, 

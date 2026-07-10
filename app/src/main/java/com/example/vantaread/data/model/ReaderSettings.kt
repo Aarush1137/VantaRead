@@ -7,8 +7,9 @@ data class ReaderSettings(
     val themeMode: ReaderTheme = ReaderTheme.VANTA_BLACK,
     val fontSizeSp: Int = 18,
     val fontType: ReaderFont = ReaderFont.SERIF,
-    val lineSpacingMultiplier: Float = 1.5f,
     val horizontalMarginDp: Int = 16,
+    val lineHeight: Float = 1.5f,
+    val textAlignment: String = "Left",
     val accentColorHex: String = "#8A2BE2" // Vanta Purple Default
 )
 

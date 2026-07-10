@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -21,6 +22,7 @@ import com.example.vantaread.ui.discover.DiscoverScreen
 import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
+import com.example.vantaread.ui.settings.SettingsScreen
 import com.example.vantaread.ui.suggestions.SuggestionsScreen
 
 @Composable
@@ -28,7 +30,7 @@ fun MainNavigation() {
     val backStack = rememberNavBackStack(Library)
     val currentRoute = backStack.lastOrNull()
     
-    val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is Suggestions || currentRoute is History
+    val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is Suggestions || currentRoute is History || currentRoute is Settings
 
     Scaffold(
         bottomBar = {
@@ -77,6 +79,17 @@ fun MainNavigation() {
                         },
                         icon = { Icon(Icons.Filled.History, contentDescription = "History") },
                         label = { Text("History") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute is Settings,
+                        onClick = { 
+                            if (currentRoute !is Settings) {
+                                backStack.clear()
+                                backStack.add(Settings)
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                        label = { Text("Settings") }
                     )
                 }
             }
@@ -137,6 +150,9 @@ fun MainNavigation() {
                             backStack.add(Reader(chapterUrl, navKey.sourceId, navKey.novelUrl, chapterTitle))
                         }
                     )
+                }
+                entry<Settings> {
+                    SettingsScreen()
                 }
             },
         )
