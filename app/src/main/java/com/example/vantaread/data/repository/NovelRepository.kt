@@ -3,6 +3,8 @@ package com.example.vantaread.data.repository
 import com.example.vantaread.data.db.ChapterEntity
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.NovelEntity
+import com.example.vantaread.data.db.ReadingHistoryDao
+import com.example.vantaread.data.db.ReadingHistoryEntity
 import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
@@ -12,11 +14,12 @@ import javax.inject.Inject
 
 class NovelRepository @Inject constructor(
     private val sources: Map<String, @JvmSuppressWildcards NovelSource>,
-    private val novelDao: NovelDao
+    private val novelDao: NovelDao,
+    private val readingHistoryDao: ReadingHistoryDao
 ) {
 
     private fun getSource(sourceId: String): NovelSource {
-        return sources[sourceId] ?: throw IllegalArgumentException("Source \$sourceId not found")
+        return sources[sourceId] ?: throw IllegalArgumentException("Source $sourceId not found")
     }
 
     // --- Network Calls ---
@@ -103,5 +106,73 @@ class NovelRepository @Inject constructor(
     
     suspend fun getChaptersListForNovelDb(novelUrl: String): List<ChapterEntity> {
         return novelDao.getChaptersListForNovel(novelUrl)
+    }
+
+    // --- Reading History ---
+
+    fun getReadingHistory(): Flow<List<ReadingHistoryEntity>> {
+        return readingHistoryDao.getAllHistory()
+    }
+
+    fun getRecentNovels(): Flow<List<ReadingHistoryEntity>> {
+        return readingHistoryDao.getRecentNovels()
+    }
+
+    suspend fun recordChapterRead(
+        chapterUrl: String,
+        novelUrl: String,
+        novelTitle: String,
+        chapterTitle: String,
+        coverUrl: String,
+        sourceId: String,
+        scrollPosition: Int = 0,
+        maxScrollPosition: Int = 0
+    ) {
+        readingHistoryDao.upsert(
+            ReadingHistoryEntity(
+                chapterUrl = chapterUrl,
+                novelUrl = novelUrl,
+                novelTitle = novelTitle,
+                chapterTitle = chapterTitle,
+                coverUrl = coverUrl,
+                sourceId = sourceId,
+                lastReadTimestamp = System.currentTimeMillis(),
+                scrollPosition = scrollPosition,
+                maxScrollPosition = maxScrollPosition
+            )
+        )
+    }
+
+    suspend fun updateHistoryScrollPosition(chapterUrl: String, scrollPosition: Int, maxScrollPosition: Int) {
+        val existing = readingHistoryDao.getHistoryEntry(chapterUrl)
+        if (existing != null) {
+            readingHistoryDao.upsert(
+                existing.copy(
+                    scrollPosition = scrollPosition,
+                    maxScrollPosition = maxScrollPosition,
+                    lastReadTimestamp = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    suspend fun getLastReadChapter(novelUrl: String): ReadingHistoryEntity? {
+        return readingHistoryDao.getLastReadChapter(novelUrl)
+    }
+
+    suspend fun getReadChapterUrls(novelUrl: String): List<String> {
+        return readingHistoryDao.getReadChapterUrls(novelUrl)
+    }
+
+    suspend fun getHistoryEntry(chapterUrl: String): ReadingHistoryEntity? {
+        return readingHistoryDao.getHistoryEntry(chapterUrl)
+    }
+
+    suspend fun deleteHistoryEntry(chapterUrl: String) {
+        readingHistoryDao.deleteEntry(chapterUrl)
+    }
+
+    suspend fun clearHistory() {
+        readingHistoryDao.clearAll()
     }
 }

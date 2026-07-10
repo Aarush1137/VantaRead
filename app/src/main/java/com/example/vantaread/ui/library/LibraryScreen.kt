@@ -2,31 +2,40 @@ package com.example.vantaread.ui.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.example.vantaread.data.db.ReadingHistoryEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onNavigateToDiscover: () -> Unit,
     onNovelClick: (String, String) -> Unit, // novelUrl, sourceId
+    onContinueReading: (String, String, String, String) -> Unit, // chapterUrl, sourceId, novelUrl, chapterTitle
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val novels by viewModel.savedNovels.collectAsState()
     val popularNovels by viewModel.popularNovels.collectAsState()
+    val recentReads by viewModel.recentReads.collectAsState()
 
     Scaffold(
         topBar = {
@@ -49,6 +58,30 @@ fun LibraryScreen(
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.fillMaxSize().padding(padding)
         ) {
+            if (recentReads.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Continue Reading",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(recentReads) { entry ->
+                            RecentReadItem(
+                                entry = entry,
+                                onClick = { onContinueReading(entry.chapterUrl, entry.sourceId, entry.novelUrl, entry.chapterTitle) }
+                            )
+                        }
+                    }
+                }
+            }
+
             if (novels.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
@@ -57,14 +90,14 @@ fun LibraryScreen(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
                     )
                 }
-                items(novels) { novel ->
+                gridItems(novels) { novel ->
                     NovelItemUi(
                         title = novel.title,
                         coverUrl = novel.coverUrl,
                         onClick = { onNovelClick(novel.url, novel.sourceId) }
                     )
                 }
-            } else if (popularNovels.isNotEmpty()) {
+            } else if (popularNovels.isNotEmpty() && recentReads.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = "Your library is empty.",
@@ -82,20 +115,72 @@ fun LibraryScreen(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
                     )
                 }
-                items(popularNovels) { novel ->
+                gridItems(popularNovels) { novel ->
                     NovelItemUi(
                         title = novel.title,
                         coverUrl = novel.coverUrl,
                         onClick = { onNovelClick(novel.url, "wtr-lab") }
                     )
                 }
-            } else if (novels.isEmpty()) {
+            } else if (novels.isEmpty() && recentReads.isEmpty()) {
                 // If both are empty (still loading popular novels)
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentReadItem(entry: ReadingHistoryEntity, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(280.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = entry.coverUrl,
+                contentDescription = entry.novelTitle,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(60.dp, 80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.novelTitle,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = entry.chapterTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                // Progress
+                LinearProgressIndicator(
+                    progress = { if (entry.maxScrollPosition > 0) entry.scrollPosition.toFloat() / entry.maxScrollPosition else 0f },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = Color(android.graphics.Color.parseColor("#8A2BE2")), // Vanta Purple
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
         }
     }

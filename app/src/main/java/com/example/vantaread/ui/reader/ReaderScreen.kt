@@ -2,6 +2,8 @@ package com.example.vantaread.ui.reader
 
 import android.widget.TextView
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -17,6 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
@@ -59,14 +65,23 @@ enum class ReaderFont(val fontFamily: FontFamily, val androidTypeface: android.g
 fun ReaderScreen(
     chapterUrl: String,
     sourceId: String,
+    novelUrl: String,
     onNavigateBack: () -> Unit,
+    onNavigateToChapter: (chapterUrl: String, chapterTitle: String) -> Unit,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(chapterUrl, sourceId) {
-        viewModel.initialize(chapterUrl, sourceId)
+    LaunchedEffect(chapterUrl, sourceId, novelUrl) {
+        viewModel.initialize(chapterUrl, sourceId, novelUrl)
     }
 
     val content by viewModel.content.collectAsState()
+    val chapterTitle by viewModel.chapterTitle.collectAsState()
+    val isAutoScrolling by viewModel.isAutoScrolling.collectAsState()
+    val autoScrollSpeed by viewModel.autoScrollSpeed.collectAsState()
+    val chapters by viewModel.chapters.collectAsState()
+    val currentChapterIndex by viewModel.currentChapterIndex.collectAsState()
+    val initialScrollIndex by viewModel.initialScrollIndex.collectAsState()
+    
     var settings by remember { mutableStateOf(ReaderSettings()) }
     
     // Parse HTML into chunks for the LazyColumn
@@ -81,6 +96,32 @@ fun ReaderScreen(
     
     var showHud by remember { mutableStateOf(false) }
     var hudInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    // Restore scroll position
+    LaunchedEffect(initialScrollIndex, paragraphs.size) {
+        if (initialScrollIndex > 0 && paragraphs.isNotEmpty() && initialScrollIndex < paragraphs.size) {
+            listState.scrollToItem(initialScrollIndex)
+        }
+    }
+
+    // Save scroll position
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { firstVisibleItemIndex ->
+                if (paragraphs.isNotEmpty()) {
+                    viewModel.saveScrollPosition(firstVisibleItemIndex, paragraphs.size)
+                }
+            }
+    }
+
+    // Auto-scroll logic
+    LaunchedEffect(isAutoScrolling, autoScrollSpeed) {
+        if (isAutoScrolling) {
+            while (true) {
+                listState.animateScrollBy(autoScrollSpeed * 2f, tween(50, easing = LinearEasing))
+            }
+        }
+    }
 
     // Auto-hide HUD after 4 seconds of inactivity
     LaunchedEffect(showHud, hudInteractionTime) {
@@ -104,6 +145,15 @@ fun ReaderScreen(
 
     val accentColor = Color(android.graphics.Color.parseColor(settings.accentColorHex))
 
+    // Calculate progress
+    val currentProgress = if (paragraphs.isNotEmpty()) {
+        val firstVisible = listState.firstVisibleItemIndex
+        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: firstVisible
+        (lastVisible.toFloat() / paragraphs.size.coerceAtLeast(1)).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -115,29 +165,39 @@ fun ReaderScreen(
                 CircularProgressIndicator(color = accentColor)
             }
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    horizontal = settings.horizontalMarginDp.dp,
-                    vertical = 80.dp // Padding to prevent HUD from overlapping text at boundaries
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Chapter progress indicator at the very top (below status bar ideally)
+                LinearProgressIndicator(
+                    progress = { currentProgress },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = accentColor,
+                    trackColor = settings.themeMode.backgroundColor
                 )
-            ) {
-                items(paragraphs) { paragraph ->
-                    AndroidView(
-                        factory = { context ->
-                            TextView(context).apply {
-                                setLineSpacing(0f, settings.lineSpacingMultiplier)
-                            }
-                        },
-                        update = { textView ->
-                            textView.textSize = settings.fontSizeSp.toFloat()
-                            textView.setTextColor(settings.themeMode.textColor.toArgb())
-                            textView.typeface = settings.fontType.androidTypeface
-                            textView.text = HtmlCompat.fromHtml(paragraph, HtmlCompat.FROM_HTML_MODE_COMPACT)
-                        },
-                        modifier = Modifier.padding(bottom = 16.dp)
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = settings.horizontalMarginDp.dp,
+                        vertical = 80.dp // Padding to prevent HUD from overlapping text at boundaries
                     )
+                ) {
+                    items(paragraphs) { paragraph ->
+                        AndroidView(
+                            factory = { context ->
+                                TextView(context).apply {
+                                    setLineSpacing(0f, settings.lineSpacingMultiplier)
+                                }
+                            },
+                            update = { textView ->
+                                textView.textSize = settings.fontSizeSp.toFloat()
+                                textView.setTextColor(settings.themeMode.textColor.toArgb())
+                                textView.typeface = settings.fontType.androidTypeface
+                                textView.text = HtmlCompat.fromHtml(paragraph, HtmlCompat.FROM_HTML_MODE_COMPACT)
+                            },
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -178,6 +238,30 @@ fun ReaderScreen(
                     )
             )
         }
+        
+        // Auto-scrolling indicator
+        if (isAutoScrolling && !showHud) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF1E1E1E).copy(alpha = 0.8f),
+                contentColor = Color.White
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text("Auto-scrolling", style = MaterialTheme.typography.bodySmall)
+                    IconButton(onClick = { viewModel.toggleAutoScroll() }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
 
         // Layer 3: System HUD Overlay
         AnimatedVisibility(
@@ -187,7 +271,14 @@ fun ReaderScreen(
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopAppBar(
-                title = { Text("Reader", color = settings.themeMode.textColor) },
+                title = { 
+                    Column {
+                        Text("Reader", color = settings.themeMode.textColor, style = MaterialTheme.typography.titleMedium)
+                        if (chapterTitle.isNotEmpty()) {
+                            Text(chapterTitle, color = settings.themeMode.textColor.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -217,9 +308,31 @@ fun ReaderScreen(
             BottomControlBar(
                 settings = settings,
                 accentColor = accentColor,
+                currentChapterIndex = currentChapterIndex,
+                totalChapters = chapters.size,
+                isAutoScrolling = isAutoScrolling,
+                autoScrollSpeed = autoScrollSpeed,
                 onSettingsChanged = { 
                     settings = it
                     notifyInteraction()
+                },
+                onToggleAutoScroll = {
+                    viewModel.toggleAutoScroll()
+                    notifyInteraction()
+                },
+                onAutoScrollSpeedChanged = {
+                    viewModel.setAutoScrollSpeed(it)
+                    notifyInteraction()
+                },
+                onPrevChapter = {
+                    viewModel.navigateToChapter(currentChapterIndex - 1)?.let {
+                        onNavigateToChapter(it.url, it.title)
+                    }
+                },
+                onNextChapter = {
+                    viewModel.navigateToChapter(currentChapterIndex + 1)?.let {
+                        onNavigateToChapter(it.url, it.title)
+                    }
                 },
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -235,7 +348,15 @@ fun ReaderScreen(
 fun BottomControlBar(
     settings: ReaderSettings,
     accentColor: Color,
+    currentChapterIndex: Int,
+    totalChapters: Int,
+    isAutoScrolling: Boolean,
+    autoScrollSpeed: Float,
     onSettingsChanged: (ReaderSettings) -> Unit,
+    onToggleAutoScroll: () -> Unit,
+    onAutoScrollSpeedChanged: (Float) -> Unit,
+    onPrevChapter: () -> Unit,
+    onNextChapter: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hudBg = Color(0xFF1E1E1E).copy(alpha = 0.95f)
@@ -253,6 +374,69 @@ fun BottomControlBar(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            
+            // Chapter Navigation
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onPrevChapter,
+                    enabled = currentChapterIndex > 0
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack, 
+                        contentDescription = "Previous Chapter",
+                        tint = if (currentChapterIndex > 0) Color.White else Color.Gray
+                    )
+                }
+                
+                Text(
+                    text = if (totalChapters > 0) "Chapter ${currentChapterIndex + 1} / $totalChapters" else "Loading...",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White
+                )
+                
+                IconButton(
+                    onClick = onNextChapter,
+                    enabled = currentChapterIndex < totalChapters - 1
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward, 
+                        contentDescription = "Next Chapter",
+                        tint = if (currentChapterIndex < totalChapters - 1) Color.White else Color.Gray
+                    )
+                }
+            }
+
+            // Auto-scroll
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onToggleAutoScroll,
+                    modifier = Modifier.background(if (isAutoScrolling) accentColor else Color.DarkGray, CircleShape)
+                ) {
+                    Icon(Icons.Default.Speed, contentDescription = "Auto-scroll")
+                }
+                
+                Text("Speed", style = MaterialTheme.typography.bodyMedium)
+                
+                Slider(
+                    value = autoScrollSpeed,
+                    onValueChange = onAutoScrollSpeedChanged,
+                    valueRange = 0.5f..5.0f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = accentColor,
+                        activeTrackColor = accentColor
+                    )
+                )
+            }
+
             // Font Size
             Row(
                 modifier = Modifier.fillMaxWidth(),

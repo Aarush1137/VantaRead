@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.vantaread.data.db.AppDatabase
 import com.example.vantaread.data.db.NovelDao
+import com.example.vantaread.data.db.ReadingHistoryDao
 import com.example.vantaread.data.repository.NovelRepository
 import com.example.vantaread.data.source.wtrlab.WtrLabSource
 import dagger.Module
@@ -24,12 +25,17 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "vantaread_db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
     fun provideNovelDao(appDatabase: AppDatabase): NovelDao {
         return appDatabase.novelDao()
+    }
+
+    @Provides
+    fun provideReadingHistoryDao(appDatabase: AppDatabase): ReadingHistoryDao {
+        return appDatabase.readingHistoryDao()
     }
 
     @Provides
@@ -47,7 +53,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelRepository(sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>, novelDao: NovelDao): NovelRepository {
-        return NovelRepository(sources, novelDao)
+    fun provideNovelRepository(sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>, novelDao: NovelDao, readingHistoryDao: ReadingHistoryDao): NovelRepository {
+        return NovelRepository(sources, novelDao, readingHistoryDao)
     }
 }

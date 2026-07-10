@@ -11,11 +11,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.vantaread.data.db.ReadingHistoryEntity
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val novelRepository: NovelRepository
 ) : ViewModel() {
+
+    val recentReads: StateFlow<List<ReadingHistoryEntity>> = novelRepository.getRecentNovels()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val savedNovels: StateFlow<List<NovelEntity>> = novelRepository.getBookmarkedNovels()
         .stateIn(

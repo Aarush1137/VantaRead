@@ -6,8 +6,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,7 +31,7 @@ fun NovelDetailScreen(
     novelUrl: String,
     sourceId: String,
     onNavigateBack: () -> Unit,
-    onChapterClick: (String, String) -> Unit, // chapterUrl, sourceId
+    onChapterClick: (chapterUrl: String, sourceId: String, chapterTitle: String) -> Unit,
     viewModel: NovelDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(novelUrl, sourceId) {
@@ -38,6 +41,8 @@ fun NovelDetailScreen(
     val details by viewModel.novelDetails.collectAsState()
     val chapters by viewModel.chapters.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
+    val readChapterUrls by viewModel.readChapterUrls.collectAsState()
+    val lastReadChapterUrl by viewModel.lastReadChapterUrl.collectAsState()
 
     Scaffold(
         topBar = {
@@ -58,6 +63,22 @@ fun NovelDetailScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (lastReadChapterUrl != null) {
+                FloatingActionButton(
+                    onClick = {
+                        val lastChapter = chapters.find { it.url == lastReadChapterUrl }
+                        if (lastChapter != null) {
+                            onChapterClick(lastChapter.url, viewModel.sourceId, lastChapter.title)
+                        }
+                    },
+                    containerColor = Color(android.graphics.Color.parseColor("#8A2BE2")), // Vanta Purple
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Continue Reading")
+                }
+            }
         }
     ) { padding ->
         if (details == null) {
@@ -100,7 +121,17 @@ fun NovelDetailScreen(
                 items(chapters) { chapter ->
                     ListItem(
                         headlineContent = { Text(chapter.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        modifier = Modifier.clickable { onChapterClick(chapter.url, viewModel.sourceId) }, 
+                        trailingContent = {
+                            if (readChapterUrls.contains(chapter.url)) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = "Read",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        },
+                        modifier = Modifier.clickable { onChapterClick(chapter.url, viewModel.sourceId, chapter.title) }, 
                     )
                 }
             }

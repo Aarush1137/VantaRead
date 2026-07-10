@@ -1,7 +1,5 @@
 package com.example.vantaread
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -13,13 +11,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.vantaread.ui.detail.NovelDetailScreen
 import com.example.vantaread.ui.discover.DiscoverScreen
+import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
 
@@ -79,7 +77,10 @@ fun MainNavigation() {
                 entry<Library> {
                     LibraryScreen(
                         onNavigateToDiscover = { backStack.add(Discover) },
-                        onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
+                        onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) },
+                        onContinueReading = { chapterUrl, sourceId, novelUrl, chapterTitle ->
+                            backStack.add(Reader(chapterUrl, sourceId, novelUrl, chapterTitle))
+                        }
                     )
                 }
                 entry<Discover> {
@@ -89,23 +90,33 @@ fun MainNavigation() {
                     )
                 }
                 entry<History> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("History Screen (Coming Soon)")
-                    }
+                    HistoryScreen(
+                        onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) },
+                        onContinueReading = { chapterUrl, sourceId, novelUrl, chapterTitle ->
+                            backStack.add(Reader(chapterUrl, sourceId, novelUrl, chapterTitle))
+                        }
+                    )
                 }
                 entry<NovelDetail> { navKey ->
                     NovelDetailScreen(
                         novelUrl = navKey.novelUrl,
                         sourceId = navKey.sourceId,
                         onNavigateBack = { backStack.removeLast() },
-                        onChapterClick = { chapterUrl, sourceId -> backStack.add(Reader(chapterUrl, sourceId)) }
+                        onChapterClick = { chapterUrl, sourceId, chapterTitle ->
+                            backStack.add(Reader(chapterUrl, sourceId, navKey.novelUrl, chapterTitle))
+                        }
                     )
                 }
                 entry<Reader> { navKey ->
                     ReaderScreen(
                         chapterUrl = navKey.chapterUrl,
                         sourceId = navKey.sourceId,
-                        onNavigateBack = { backStack.removeLast() }
+                        novelUrl = navKey.novelUrl,
+                        onNavigateBack = { backStack.removeLast() },
+                        onNavigateToChapter = { chapterUrl, chapterTitle ->
+                            backStack.removeLast()
+                            backStack.add(Reader(chapterUrl, navKey.sourceId, navKey.novelUrl, chapterTitle))
+                        }
                     )
                 }
             },

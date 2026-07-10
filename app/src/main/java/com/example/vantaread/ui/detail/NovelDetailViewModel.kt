@@ -32,6 +32,12 @@ class NovelDetailViewModel @Inject constructor(
     private val _isBookmarked = MutableStateFlow(false)
     val isBookmarked: StateFlow<Boolean> = _isBookmarked.asStateFlow()
 
+    private val _readChapterUrls = MutableStateFlow<Set<String>>(emptySet())
+    val readChapterUrls: StateFlow<Set<String>> = _readChapterUrls.asStateFlow()
+
+    private val _lastReadChapterUrl = MutableStateFlow<String?>(null)
+    val lastReadChapterUrl: StateFlow<String?> = _lastReadChapterUrl.asStateFlow()
+
     fun initialize(novelUrl: String, sourceId: String) {
         if (this.novelUrl == novelUrl) return
         this.novelUrl = novelUrl
@@ -60,6 +66,12 @@ class NovelDetailViewModel @Inject constructor(
                     if (dbChapters.isNotEmpty()) {
                         _chapters.value = dbChapters
                     }
+                    
+                    val readUrls = novelRepository.getReadChapterUrls(novelUrl)
+                    _readChapterUrls.value = readUrls.toSet()
+                    
+                    val lastRead = novelRepository.getLastReadChapter(novelUrl)
+                    _lastReadChapterUrl.value = lastRead?.chapterUrl
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
