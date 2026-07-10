@@ -17,6 +17,21 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     override val sourceName = "Royal Road"
     private val baseUrl = "https://www.royalroad.com"
 
+    private fun absoluteUrl(url: String): String {
+        return when {
+            url.isBlank() -> ""
+            url.startsWith("http") -> url
+            else -> "$baseUrl$url"
+        }
+    }
+
+    private fun coverUrlFrom(item: org.jsoup.nodes.Element): String {
+        val rawUrl = item.selectFirst("img[data-type=cover], img[src], img[data-src]")
+            ?.let { img -> img.attr("src").ifBlank { img.attr("data-src") } }
+            ?: ""
+        return absoluteUrl(rawUrl)
+    }
+
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/fictions/best-rated"
         val doc = WebViewScraper.getHtml(context, url)
@@ -27,10 +42,8 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         for (item in items) {
             val titleElement = item.selectFirst(".fiction-title a") ?: continue
             val title = titleElement.text()
-            val novelUrl = baseUrl + titleElement.attr("href")
-            val coverUrl = item.selectFirst("img[src]")?.attr("src")?.let { 
-                if (it.startsWith("http")) it else "$baseUrl$it" 
-            } ?: ""
+            val novelUrl = absoluteUrl(titleElement.attr("href"))
+            val coverUrl = coverUrlFrom(item)
             
             novels.add(Novel(novelUrl, title, coverUrl, author = "", status = ""))
         }
@@ -48,10 +61,8 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         for (item in items) {
             val titleElement = item.selectFirst(".fiction-title a") ?: continue
             val title = titleElement.text()
-            val novelUrl = baseUrl + titleElement.attr("href")
-            val coverUrl = item.selectFirst("img[src]")?.attr("src")?.let { 
-                if (it.startsWith("http")) it else "$baseUrl$it" 
-            } ?: ""
+            val novelUrl = absoluteUrl(titleElement.attr("href"))
+            val coverUrl = coverUrlFrom(item)
             
             novels.add(Novel(novelUrl, title, coverUrl, author = "", status = ""))
         }
@@ -63,12 +74,16 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         val doc = WebViewScraper.getHtml(context, novelUrl)
         
         val title = doc.selectFirst("h1.font-white")?.text() ?: doc.title()
-        val coverUrl = doc.selectFirst(".fic-header img")?.attr("src")?.let { 
-                if (it.startsWith("http")) it else "$baseUrl$it" 
-        } ?: ""
-        val synopsis = doc.selectFirst(".description")?.text() ?: ""
+        val coverUrl = doc.selectFirst("meta[property=og:image]")?.attr("content")
+            ?: doc.selectFirst(".fic-header img[data-type=cover], .fic-header img")?.attr("src")?.let(::absoluteUrl)
+            ?: ""
+        val synopsis = doc.selectFirst("meta[property=og:description]")?.attr("content")
+            ?: doc.selectFirst(".description, .fiction-info .description")?.text()
+            ?: ""
         
-        val author = doc.selectFirst(".fic-header h4 a")?.text() ?: ""
+        val author = doc.selectFirst("meta[property=books:author]")?.attr("content")
+            ?: doc.selectFirst(".fic-header h4 a")?.text()
+            ?: ""
         val genres = doc.select(".tags a.tags").map { it.text() }
         
         // Stats
@@ -96,11 +111,11 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         val doc = WebViewScraper.getHtml(context, novelUrl)
         
         val chapters = mutableListOf<Chapter>()
-        val elements = doc.select("#chapters tbody tr")
+        val elements = doc.select("#chapters tbody tr, tr.chapter-row")
         
         elements.forEachIndexed { index, tr ->
             val a = tr.selectFirst("a[href]") ?: return@forEachIndexed
-            val url = baseUrl + a.attr("href")
+            val url = absoluteUrl(a.attr("href"))
             val title = a.text().trim()
             
             chapters.add(Chapter(url, novelUrl, title, index))

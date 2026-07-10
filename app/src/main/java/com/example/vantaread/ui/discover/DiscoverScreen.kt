@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.vantaread.data.model.Novel
+import com.example.vantaread.data.source.SourceCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,16 +33,13 @@ fun DiscoverScreen(
 ) {
     val searchResults by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val hasSearched by viewModel.hasSearched.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
     val activeSourceId by viewModel.activeSourceId.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val sources = mapOf(
-        "novelfull" to "NovelFull",
-        "wtr-lab" to "WTR Lab",
-        "royalroad" to "Royal Road",
-        "lightnovelpub" to "LightNovelPub"
-    )
+    val activeSourceName = SourceCatalog.nameFor(activeSourceId)
 
         Scaffold(
         topBar = {
@@ -51,7 +49,7 @@ fun DiscoverScreen(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
-                        placeholder = { Text("Search ${sources[activeSourceId]}...") },
+                        placeholder = { Text("Search $activeSourceName...") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { viewModel.search(searchQuery) }),
@@ -76,18 +74,18 @@ fun DiscoverScreen(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
-                            sources.forEach { (id, name) ->
+                            SourceCatalog.sources.forEach { source ->
                                 DropdownMenuItem(
-                                    text = { Text(name) },
+                                    text = { Text(source.name) },
                                     onClick = {
-                                        viewModel.setActiveSource(id)
+                                        viewModel.setActiveSource(source.id)
                                         expanded = false
                                         if (searchQuery.isNotBlank()) {
                                             viewModel.search(searchQuery)
                                         }
                                     },
-                                    trailingIcon = if (activeSourceId == id) {
-                                        { Text("✓") }
+                                    trailingIcon = if (activeSourceId == source.id) {
+                                        { Text("Selected") }
                                     } else null
                                 )
                             }
@@ -100,6 +98,16 @@ fun DiscoverScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (errorMessage != null) {
+                Text(
+                    "Search failed: $errorMessage",
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp)
+                )
+            } else if (searchResults.isEmpty() && hasSearched) {
+                Text(
+                    "No results found for \"$searchQuery\".",
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp)
+                )
             } else if (searchResults.isEmpty()) {
                 Text(
                     "Search for a novel to get started.",

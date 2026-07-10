@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.example.vantaread.data.model.ReaderFont
 import com.example.vantaread.data.model.ReaderSettings
 import com.example.vantaread.data.model.ReaderTheme
+import com.example.vantaread.data.source.SourceCatalog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,11 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "system") ?: "system")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
-    private val _defaultSource = MutableStateFlow(prefs.getString("default_source", "novelfull") ?: "novelfull")
+    private val _defaultSource = MutableStateFlow(
+        SourceCatalog.normalize(
+            prefs.getString("default_source", SourceCatalog.DEFAULT_SOURCE_ID) ?: SourceCatalog.DEFAULT_SOURCE_ID
+        )
+    )
     val defaultSource: StateFlow<String> = _defaultSource.asStateFlow()
 
     private fun loadSettings(): ReaderSettings {
@@ -34,9 +39,9 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
         val textAlignment = prefs.getString("text_alignment", "Left") ?: "Left"
 
         return ReaderSettings(
-            themeMode = ReaderTheme.valueOf(themeName),
+            themeMode = runCatching { ReaderTheme.valueOf(themeName) }.getOrDefault(ReaderTheme.VANTA_BLACK),
             fontSizeSp = fontSize,
-            fontType = ReaderFont.valueOf(fontName),
+            fontType = runCatching { ReaderFont.valueOf(fontName) }.getOrDefault(ReaderFont.SERIF),
             horizontalMarginDp = horizontalMargin,
             lineHeight = lineHeight,
             textAlignment = textAlignment
@@ -49,8 +54,9 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
     }
 
     fun setDefaultSource(sourceId: String) {
-        prefs.edit().putString("default_source", sourceId).apply()
-        _defaultSource.value = sourceId
+        val normalized = SourceCatalog.normalize(sourceId)
+        prefs.edit().putString("default_source", normalized).apply()
+        _defaultSource.value = normalized
     }
 
     private val _batchDownloadAmount = MutableStateFlow(prefs.getInt("batch_download", 0))

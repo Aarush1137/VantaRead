@@ -24,17 +24,27 @@ class DiscoverViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _hasSearched = MutableStateFlow(false)
+    val hasSearched: StateFlow<Boolean> = _hasSearched.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     val activeSourceId: StateFlow<String> = sourcePrefs.activeSourceId
 
     fun setActiveSource(sourceId: String) {
         sourcePrefs.setActiveSource(sourceId)
         _searchResults.value = emptyList() // clear results on source change
+        _hasSearched.value = false
+        _errorMessage.value = null
     }
 
     fun search(query: String) {
         if (query.isBlank()) return
         viewModelScope.launch {
             _isLoading.value = true
+            _hasSearched.value = true
+            _errorMessage.value = null
             try {
                 val currentSourceId = sourcePrefs.activeSourceId.value
                 val results = novelRepository.searchNovels(query, currentSourceId)
@@ -42,6 +52,7 @@ class DiscoverViewModel @Inject constructor(
                 _searchResults.value = results
             } catch (e: Exception) {
                 android.util.Log.e("DiscoverViewModel", "Search error", e)
+                _errorMessage.value = e.message ?: "Search failed"
                 _searchResults.value = emptyList()
             } finally {
                 _isLoading.value = false

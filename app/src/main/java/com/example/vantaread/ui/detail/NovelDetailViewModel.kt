@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vantaread.data.db.ChapterEntity
+import com.example.vantaread.data.db.NovelEntity
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.repository.NovelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +44,9 @@ class NovelDetailViewModel @Inject constructor(
     private val _lastReadChapterUrl = MutableStateFlow<String?>(null)
     val lastReadChapterUrl: StateFlow<String?> = _lastReadChapterUrl.asStateFlow()
 
+    private val _downloadMessage = MutableStateFlow<String?>(null)
+    val downloadMessage: StateFlow<String?> = _downloadMessage.asStateFlow()
+
     fun initialize(novelUrl: String, sourceId: String) {
         if (this.novelUrl == novelUrl) return
         this.novelUrl = novelUrl
@@ -56,7 +60,27 @@ class NovelDetailViewModel @Inject constructor(
         checkBookmarkStatus()
     }
 
+    private fun NovelEntity.toDetails(): NovelDetails {
+        return NovelDetails(
+            url = url,
+            title = title,
+            coverUrl = coverUrl,
+            synopsis = synopsis,
+            author = author,
+            genres = genres.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+            status = status,
+            latestUpdate = latestUpdate
+        )
+    }
+
     private fun loadNovelDetails() {
+        viewModelScope.launch {
+            novelRepository.getNovelFromDb(novelUrl)?.let { cachedNovel ->
+                _novelDetails.value = cachedNovel.toDetails()
+                _isBookmarked.value = cachedNovel.isBookmarked
+            }
+        }
+
         // Start collecting from DB immediately for fast display
         viewModelScope.launch {
             novelRepository.getChaptersForNovelDb(novelUrl).collect { dbChapters ->
@@ -106,7 +130,10 @@ class NovelDetailViewModel @Inject constructor(
         val chapterList = _chapters.value
         if (chapterList.isEmpty()) return
 
-        val chaptersToDownload = chapterList.drop(startIndex).take(count)
+        val chaptersToDownload = chapterList
+            .drop(startIndex)
+            .filter { !it.isDownloaded }
+            .take(count)
         
         val workRequests = chaptersToDownload.map { chapter ->
             val data = Data.Builder()
@@ -121,6 +148,17 @@ class NovelDetailViewModel @Inject constructor(
         
         if (workRequests.isNotEmpty()) {
             workManager.enqueue(workRequests)
+            _downloadMessage.value = "Queued ${workRequests.size} chapter download(s)."
+        } else {
+            _downloadMessage.value = "Selected chapters are already downloaded."
         }
+    }
+
+    fun downloadAllChapters() {
+        downloadChapters(0, Int.MAX_VALUE)
+    }
+
+    fun clearDownloadMessage() {
+        _downloadMessage.value = null
     }
 }

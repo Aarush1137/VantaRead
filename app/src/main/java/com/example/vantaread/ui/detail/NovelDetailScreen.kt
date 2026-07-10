@@ -45,8 +45,18 @@ fun NovelDetailScreen(
     val isBookmarked by viewModel.isBookmarked.collectAsState()
     val readChapterUrls by viewModel.readChapterUrls.collectAsState()
     val lastReadChapterUrl by viewModel.lastReadChapterUrl.collectAsState()
+    val downloadMessage by viewModel.downloadMessage.collectAsState()
+    val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
+
+    LaunchedEffect(downloadMessage) {
+        downloadMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearDownloadMessage()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(details?.title ?: "Loading...") },
@@ -116,8 +126,62 @@ fun NovelDetailScreen(
                     }
                     Text(text = "Synopsis", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(text = details!!.synopsis, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
-                    
-                    
+                    val downloadedCount = chapters.count { it.isDownloaded }
+                    Text(
+                        text = "Downloads",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "$downloadedCount of ${chapters.size} chapters downloaded",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val unreadIndex = chapters.indexOfFirst { !it.isDownloaded }
+                                        viewModel.downloadChapters(if (unreadIndex >= 0) unreadIndex else 0, 5)
+                                    },
+                                    enabled = chapters.any { !it.isDownloaded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Next 5")
+                                }
+                                Button(
+                                    onClick = {
+                                        val unreadIndex = chapters.indexOfFirst { !it.isDownloaded }
+                                        viewModel.downloadChapters(if (unreadIndex >= 0) unreadIndex else 0, 10)
+                                    },
+                                    enabled = chapters.any { !it.isDownloaded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Next 10")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.downloadAllChapters() },
+                                    enabled = chapters.any { !it.isDownloaded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("All")
+                                }
+                            }
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,

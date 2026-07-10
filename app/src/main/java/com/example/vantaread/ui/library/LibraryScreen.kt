@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.runtime.LaunchedEffect
+import com.example.vantaread.data.source.SourceCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,13 +77,6 @@ fun LibraryScreen(
                     val currentSort by viewModel.currentSortOption.collectAsState()
                     val activeSourceId by viewModel.activeSourceId.collectAsState()
                     
-                    val sources = mapOf(
-                        "novelfull" to "NovelFull",
-                        "wtr-lab" to "WTR Lab",
-                        "royalroad" to "Royal Road",
-                        "lightnovelpub" to "LightNovelPub"
-                    )
-
                     IconButton(onClick = { showSourceMenu = true }) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
@@ -94,15 +88,15 @@ fun LibraryScreen(
                         expanded = showSourceMenu,
                         onDismissRequest = { showSourceMenu = false }
                     ) {
-                        sources.forEach { (id, name) ->
+                        SourceCatalog.sources.forEach { source ->
                             DropdownMenuItem(
-                                text = { Text(name) },
+                                text = { Text(source.name) },
                                 onClick = {
-                                    viewModel.setActiveSource(id)
+                                    viewModel.setActiveSource(source.id)
                                     showSourceMenu = false
                                 },
-                                trailingIcon = if (activeSourceId == id) {
-                                    { Text("✓") }
+                                trailingIcon = if (activeSourceId == source.id) {
+                                    { Text("Selected") }
                                 } else null
                             )
                         }

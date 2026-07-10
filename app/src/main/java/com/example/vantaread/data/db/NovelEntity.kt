@@ -16,5 +16,5 @@ data class NovelEntity(
     val isBookmarked: Boolean = false,
     val currentChapterUrl: String? = null,
     val currentScrollPosition: Int = 0,
-    val sourceId: String = "wtr-lab" // Default for backward compatibility
+    val sourceId: String = "wtrlab"
 )

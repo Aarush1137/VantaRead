@@ -9,33 +9,37 @@ import com.example.vantaread.data.source.util.WebViewScraper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import java.net.URLEncoder
 import javax.inject.Inject
 
 class WtrLabSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : NovelSource {
     override val sourceId: String = "wtrlab"
     override val sourceName: String = "WTR-Lab"
     private val baseUrl = "https://wtr-lab.com"
 
-    override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/en/search?title=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = WebViewScraper.getHtml(context, url)
-        
-        doc.select("a[href*=/novel/]").mapNotNull { element ->
-            val novelUrl = element.attr("href").let { if (it.startsWith("http")) it else baseUrl + it }
-            // Wtr-Lab uses specific formatting, we try to extract the title and img
-            val titleElement = element.selectFirst("div > span:first-child, h3, .title") ?: element
-            val title = titleElement.text().trim()
-            val imgElement = element.selectFirst("img")
-            
-            if (title.isNotEmpty() && !novelUrl.contains("/chapter-")) {
+    private fun absoluteUrl(url: String): String {
+        return when {
+            url.isBlank() -> ""
+            url.startsWith("http") -> url
+            else -> "$baseUrl$url"
+        }
+    }
+
+    private fun parseNovelCards(doc: org.jsoup.nodes.Document): List<Novel> {
+        return doc.select("a[href*=/en/novel/]").mapNotNull { element ->
+            val title = element.attr("title").ifEmpty { element.text() }.trim()
+            val href = element.attr("href")
+            val novelUrl = absoluteUrl(href)
+            val card = element.parents().firstOrNull { it.selectFirst("img") != null } ?: element.parent()
+            val imgElement = card?.selectFirst("img[alt], img[src]")
+            val coverUrl = imgElement?.attr("src")?.let(::absoluteUrl) ?: ""
+
+            if (title.isNotEmpty() && novelUrl.contains("/en/novel/") && !novelUrl.contains("/chapter-")) {
                 Novel(
                     url = novelUrl,
                     title = title,
-                    coverUrl = imgElement?.attr("src")?.let { if (it.startsWith("http")) it else baseUrl + it } ?: ""
+                    coverUrl = coverUrl
                 )
             } else {
                 null
@@ -43,33 +47,35 @@ class WtrLabSource @Inject constructor(
         }.distinctBy { it.url }
     }
 
-    override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/en"
+    override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
+        val url = "$baseUrl/en/novel-list"
         val doc = WebViewScraper.getHtml(context, url)
-        
-        doc.select("a[href*=/novel/]").mapNotNull { element ->
-            val novelUrl = element.attr("href").let { if (it.startsWith("http")) it else baseUrl + it }
-            val title = element.attr("title").ifEmpty { element.text() }.trim()
-            val imgElement = element.selectFirst("img")
-            
-            if (title.isNotEmpty() && !novelUrl.contains("/chapter-")) {
-                Novel(
-                    url = novelUrl,
-                    title = title,
-                    coverUrl = imgElement?.attr("src")?.let { if (it.startsWith("http")) it else baseUrl + it } ?: ""
-                )
-            } else null
-        }.distinctBy { it.url }.take(20)
+
+        val normalizedQuery = query.trim().lowercase()
+        parseNovelCards(doc).filter { novel ->
+            novel.title.lowercase().contains(normalizedQuery)
+        }
+    }
+
+    override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
+        val url = "$baseUrl/en/novel-list"
+        val doc = WebViewScraper.getHtml(context, url)
+
+        parseNovelCards(doc).take(20)
     }
 
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
         val doc = WebViewScraper.getHtml(context, novelUrl)
         
-        val title = doc.selectFirst("h1")?.text() ?: "Unknown Title"
+        val title = doc.selectFirst("h1")?.text()
+            ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.removePrefix("Read ")?.substringBefore(" RAW English Translation")
+            ?: "Unknown Title"
         val coverUrl = doc.selectFirst("meta[property=og:image]")?.attr("content")
-            ?: doc.selectFirst("img[alt*=$title]")?.attr("src") ?: ""
+            ?: doc.selectFirst("img[alt*=$title]")?.attr("src")?.let(::absoluteUrl) ?: ""
             
-        val synopsis = doc.selectFirst(".desc-wrap, .description")?.text() ?: "No synopsis available."
+        val synopsis = doc.selectFirst(".desc-wrap, .description")?.text()
+            ?: doc.selectFirst("meta[property=og:description]")?.attr("content")
+            ?: "No synopsis available."
         
         var author = "Unknown"
         var status = "Unknown"
@@ -110,7 +116,7 @@ class WtrLabSource @Inject constructor(
         doc.select("a[href*=/chapter-]").forEachIndexed { index, element ->
             chapters.add(
                 Chapter(
-                    url = if (element.attr("href").startsWith("http")) element.attr("href") else baseUrl + element.attr("href"),
+                    url = absoluteUrl(element.attr("href")),
                     novelUrl = novelUrl,
                     title = element.text().ifEmpty { "Chapter ${index + 1}" },
                     index = index

@@ -12,8 +12,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.vantaread.data.db.ReadingHistoryEntity
+import com.example.vantaread.data.prefs.ReaderPreferencesManager
 import com.example.vantaread.data.prefs.SourcePreferencesManager
+import com.example.vantaread.data.source.SourceCatalog
+import com.example.vantaread.worker.ChapterDownloadWorker
 
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.flow.combine
 
 enum class SortOption(val displayName: String) {
@@ -25,7 +31,9 @@ enum class SortOption(val displayName: String) {
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val novelRepository: NovelRepository,
-    private val sourcePrefs: SourcePreferencesManager
+    private val sourcePrefs: SourcePreferencesManager,
+    private val readerPreferencesManager: ReaderPreferencesManager,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     val currentSortOption = MutableStateFlow(SortOption.DEFAULT)
@@ -102,13 +110,8 @@ class LibraryViewModel @Inject constructor(
 
     fun addNovelViaUrl(url: String) {
         viewModelScope.launch {
-            val sourceId = when {
-                url.contains("novelfull.com") -> "novelfull"
-                url.contains("royalroad.com") -> "royalroad"
-                url.contains("lightnovelpub.vip") || url.contains("lightnovelpub.com") -> "lightnovelpub"
-                url.contains("wtr-lab.com") -> "wtrlab"
-                else -> null
-            }
+            val trimmedUrl = url.trim()
+            val sourceId = SourceCatalog.detectSourceId(trimmedUrl)
             
             if (sourceId == null) {
                 _addNovelResult.value = Result.failure(Exception("Unsupported URL or Source"))
@@ -116,13 +119,30 @@ class LibraryViewModel @Inject constructor(
             }
             
             try {
-                val details = novelRepository.getNovelDetails(url, sourceId)
-                novelRepository.fetchAndCacheChapters(url, sourceId)
+                val details = novelRepository.getNovelDetails(trimmedUrl, sourceId)
+                val chapters = novelRepository.fetchAndCacheChapters(trimmedUrl, sourceId)
                 
                 // Add to bookmark if not already
-                val existing = novelRepository.getNovelFromDb(url)
+                val existing = novelRepository.getNovelFromDb(trimmedUrl)
                 if (existing?.isBookmarked != true) {
                     novelRepository.toggleBookmark(details, sourceId)
+                }
+
+                val batchAmount = readerPreferencesManager.batchDownloadAmount.value
+                if (batchAmount > 0 && chapters.isNotEmpty()) {
+                    val requests = chapters
+                        .take(if (batchAmount >= 100) chapters.size else batchAmount)
+                        .map { chapter ->
+                            val data = Data.Builder()
+                                .putString(ChapterDownloadWorker.KEY_CHAPTER_URL, chapter.url)
+                                .putString(ChapterDownloadWorker.KEY_SOURCE_ID, sourceId)
+                                .build()
+
+                            OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
+                                .setInputData(data)
+                                .build()
+                        }
+                    workManager.enqueue(requests)
                 }
                 
                 _addNovelResult.value = Result.success(details.title)

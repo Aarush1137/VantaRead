@@ -9,6 +9,7 @@ import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
+import com.example.vantaread.data.source.SourceCatalog
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -19,7 +20,8 @@ class NovelRepository @Inject constructor(
 ) {
 
     private fun getSource(sourceId: String): NovelSource {
-        return sources[sourceId] ?: throw IllegalArgumentException("Source $sourceId not found")
+        val normalizedSourceId = SourceCatalog.normalize(sourceId)
+        return sources[normalizedSourceId] ?: throw IllegalArgumentException("Source $normalizedSourceId not found")
     }
 
     // --- Network Calls ---
@@ -38,7 +40,7 @@ class NovelRepository @Inject constructor(
         val existing = novelDao.getNovel(novelUrl)
         novelDao.insertNovel(
             NovelEntity(
-                url = details.url,
+                url = novelUrl,
                 title = details.title,
                 coverUrl = details.coverUrl,
                 synopsis = details.synopsis,
@@ -49,7 +51,7 @@ class NovelRepository @Inject constructor(
                 isBookmarked = existing?.isBookmarked ?: false,
                 currentChapterUrl = existing?.currentChapterUrl,
                 currentScrollPosition = existing?.currentScrollPosition ?: 0,
-                sourceId = sourceId
+                sourceId = SourceCatalog.normalize(sourceId)
             )
         )
         
@@ -57,7 +59,8 @@ class NovelRepository @Inject constructor(
     }
 
     suspend fun fetchAndCacheChapters(novelUrl: String, sourceId: String): List<Chapter> {
-        val chapters = getSource(sourceId).getChapterList(novelUrl)
+        val normalizedSourceId = SourceCatalog.normalize(sourceId)
+        val chapters = getSource(normalizedSourceId).getChapterList(novelUrl)
         novelDao.insertChapters(chapters.map {
             ChapterEntity(
                 url = it.url,
@@ -109,7 +112,7 @@ class NovelRepository @Inject constructor(
                     status = novelDetails.status,
                     latestUpdate = novelDetails.latestUpdate,
                     isBookmarked = true,
-                    sourceId = sourceId
+                    sourceId = SourceCatalog.normalize(sourceId)
                 )
             )
         }

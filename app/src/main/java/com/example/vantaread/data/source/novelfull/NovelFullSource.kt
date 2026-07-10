@@ -16,6 +16,15 @@ class NovelFullSource(private val context: Context) : NovelSource {
 
     private val baseUrl = "https://novelfull.com"
 
+    private fun absoluteUrl(url: String): String {
+        return when {
+            url.isBlank() -> ""
+            url.startsWith("http") -> url
+            url.startsWith("//") -> "https:$url"
+            else -> "$baseUrl$url"
+        }
+    }
+
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/most-popular"
         val doc = WebViewScraper.getHtml(context, url)
@@ -26,10 +35,10 @@ class NovelFullSource(private val context: Context) : NovelSource {
         for (item in items) {
             val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
             val title = titleElement.text()
-            val novelUrl = baseUrl + titleElement.attr("href")
-            val coverUrl = baseUrl + (item.selectFirst("img.cover")?.attr("src") ?: "")
+            val novelUrl = absoluteUrl(titleElement.attr("href"))
+            val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
             
-            novels.add(Novel(novelUrl, title, coverUrl, sourceId))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl))
         }
         
         novels
@@ -45,10 +54,10 @@ class NovelFullSource(private val context: Context) : NovelSource {
         for (item in items) {
             val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
             val title = titleElement.text()
-            val novelUrl = baseUrl + titleElement.attr("href")
-            val coverUrl = baseUrl + (item.selectFirst("img.cover")?.attr("src") ?: "")
+            val novelUrl = absoluteUrl(titleElement.attr("href"))
+            val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
             
-            novels.add(Novel(novelUrl, title, coverUrl, sourceId))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl))
         }
         
         novels
@@ -57,18 +66,29 @@ class NovelFullSource(private val context: Context) : NovelSource {
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
         val doc = WebViewScraper.getHtml(context, novelUrl)
         
-        val title = doc.selectFirst("h3.title")?.text() ?: ""
-        val coverUrl = baseUrl + (doc.selectFirst(".book img")?.attr("src") ?: "")
+        val title = doc.selectFirst("h3.title")?.text()
+            ?: doc.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: doc.title()
+        val coverUrl = doc.selectFirst(".book img, meta[property=og:image]")
+            ?.let { it.attr("src").ifBlank { it.attr("content") } }
+            ?.let(::absoluteUrl)
+            ?: ""
         val synopsis = doc.selectFirst(".desc-text")?.text() ?: ""
+        val author = doc.selectFirst(".info a[href*=/author/]")?.text() ?: ""
+        val genres = doc.select(".info a[href*=/genre/]").map { it.text() }
+        val status = doc.select(".info div, .info li").firstOrNull { it.text().contains("Status", ignoreCase = true) }?.text()
+            ?.substringAfter("Status", "")
+            ?.trim()
+            ?: ""
         
         NovelDetails(
             url = novelUrl,
             title = title,
             coverUrl = coverUrl,
             synopsis = synopsis,
-            author = "",
-            genres = emptyList(),
-            status = "",
+            author = author,
+            genres = genres,
+            status = status,
             latestUpdate = ""
         )
     }
@@ -83,7 +103,7 @@ class NovelFullSource(private val context: Context) : NovelSource {
         val elements = doc.select("ul.list-chapter li a")
         
         elements.forEachIndexed { index, element ->
-            val url = baseUrl + element.attr("href")
+            val url = absoluteUrl(element.attr("href"))
             val title = element.text()
             chapters.add(Chapter(url, novelUrl, title, index))
         }

@@ -2,6 +2,7 @@ package com.example.vantaread.data.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.vantaread.data.source.SourceCatalog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,11 +18,14 @@ class SourcePreferencesManager @Inject constructor(@ApplicationContext context: 
     val activeSourceId: StateFlow<String> = _activeSourceId.asStateFlow()
 
     private fun loadActiveSource(): String {
-        return prefs.getString("active_source", "novelfull") ?: "novelfull"
+        return SourceCatalog.normalize(
+            prefs.getString("active_source", SourceCatalog.DEFAULT_SOURCE_ID) ?: SourceCatalog.DEFAULT_SOURCE_ID
+        )
     }
 
     fun setActiveSource(sourceId: String) {
-        prefs.edit().putString("active_source", sourceId).apply()
-        _activeSourceId.value = sourceId
+        val normalized = SourceCatalog.normalize(sourceId)
+        prefs.edit().putString("active_source", normalized).apply()
+        _activeSourceId.value = normalized
     }
 }

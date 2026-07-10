@@ -36,6 +36,14 @@ class ChapterDownloadWorker @AssistedInject constructor(
 
             // Fetch from network
             val content = novelRepository.getChapterContent(chapterUrl, sourceId)
+            if (
+                content.isBlank() ||
+                content.startsWith("Error loading chapter content") ||
+                content.startsWith("Failed to")
+            ) {
+                Log.e("DownloadWorker", "Downloaded content was empty or failed for $chapterUrl")
+                return@withContext Result.retry()
+            }
             
             // Update database
             val updatedChapter = chapterEntity.copy(

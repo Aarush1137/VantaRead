@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.vantaread.data.source.SourceCatalog
 import com.example.vantaread.ui.library.LibraryViewModel
 import com.example.vantaread.ui.library.NovelItemUi
 
@@ -35,6 +36,7 @@ fun SuggestionsScreen(
     val popularNovels by viewModel.popularNovels.collectAsState()
     val isLoading by viewModel.isLoadingPopularNovels.collectAsState()
     val activeSourceId by viewModel.activeSourceId.collectAsState()
+    val activeSourceName = SourceCatalog.nameFor(activeSourceId)
 
     Scaffold(
         topBar = {
@@ -49,7 +51,7 @@ fun SuggestionsScreen(
             }
         } else if (popularNovels.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No suggestions available right now.")
+                Text("No suggestions available from $activeSourceName right now.")
             }
         } else {
             LazyVerticalGrid(

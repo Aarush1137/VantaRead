@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.vantaread.data.source.SourceCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,13 +38,6 @@ fun SettingsScreen(
         "system" to "System",
         "light" to "Light",
         "dark" to "Dark"
-    )
-
-    val sources = listOf(
-        "novelfull" to "NovelFull",
-        "wtr_lab" to "WTR Lab",
-        "royal_road" to "Royal Road",
-        "lightnovelpub" to "LightNovelPub"
     )
 
     Scaffold(
@@ -90,19 +84,19 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            sources.forEach { (id, label) ->
+            SourceCatalog.sources.forEach { source ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { viewModel.setDefaultSource(id) }
+                        .clickable { viewModel.setDefaultSource(source.id) }
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = defaultSource == id,
-                        onClick = { viewModel.setDefaultSource(id) }
+                        selected = defaultSource == source.id,
+                        onClick = { viewModel.setDefaultSource(source.id) }
                     )
-                    Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                    Text(text = source.name, modifier = Modifier.padding(start = 8.dp))
                 }
             }
 
