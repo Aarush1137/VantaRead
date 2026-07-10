@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.vantaread.data.db.ReadingHistoryEntity
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sort
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +38,7 @@ fun LibraryScreen(
     val novels by viewModel.savedNovels.collectAsState()
     val popularNovels by viewModel.popularNovels.collectAsState()
     val recentReads by viewModel.recentReads.collectAsState()
+    val isLoadingPopularNovels by viewModel.isLoadingPopularNovels.collectAsState()
 
     Scaffold(
         topBar = {
@@ -44,7 +47,39 @@ fun LibraryScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = {
+                    var showSortMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    val currentSort by viewModel.currentSortOption.collectAsState()
+                    
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Sort,
+                            contentDescription = "Sort"
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        SortOption.values().forEach { option ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = option.displayName, 
+                                        fontWeight = if (option == currentSort) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (option == currentSort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    ) 
+                                },
+                                onClick = {
+                                    viewModel.setSortOption(option)
+                                    showSortMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -97,7 +132,7 @@ fun LibraryScreen(
                         onClick = { onNovelClick(novel.url, novel.sourceId) }
                     )
                 }
-            } else if (popularNovels.isNotEmpty() && recentReads.isEmpty()) {
+            } else if (!isLoadingPopularNovels && recentReads.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = "Your library is empty.",
@@ -122,8 +157,8 @@ fun LibraryScreen(
                         onClick = { onNovelClick(novel.url, "wtr-lab") }
                     )
                 }
-            } else if (novels.isEmpty() && recentReads.isEmpty()) {
-                // If both are empty (still loading popular novels)
+            } else if (isLoadingPopularNovels && novels.isEmpty() && recentReads.isEmpty()) {
+                // If both are empty and it's still loading popular novels
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()

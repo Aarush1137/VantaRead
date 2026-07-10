@@ -25,6 +25,18 @@ object WebViewScraper {
             webView.webViewClient = object : WebViewClient() {
                 var attempts = 0
                 
+                override fun onReceivedError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    error: android.webkit.WebResourceError
+                ) {
+                    super.onReceivedError(view, request, error)
+                    if (finished) return
+                    finished = true
+                    continuation.resumeWith(Result.success(Jsoup.parse("<html><body>Error: ${error.description}</body></html>")))
+                    view.destroy()
+                }
+
                 override fun onPageFinished(view: WebView, url: String) {
                     if (finished) return
                     attempts++

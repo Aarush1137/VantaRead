@@ -14,11 +14,21 @@ import javax.inject.Inject
 import com.example.vantaread.data.db.ReadingHistoryEntity
 import com.example.vantaread.data.prefs.SourcePreferencesManager
 
+import kotlinx.coroutines.flow.combine
+
+enum class SortOption(val displayName: String) {
+    DEFAULT("Default"),
+    ALPHABETICAL("Alphabetical"),
+    RECENTLY_READ("Recently Read")
+}
+
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val novelRepository: NovelRepository,
     private val sourcePrefs: SourcePreferencesManager
 ) : ViewModel() {
+
+    val currentSortOption = MutableStateFlow(SortOption.DEFAULT)
 
     val recentReads: StateFlow<List<ReadingHistoryEntity>> = novelRepository.getRecentNovels()
         .stateIn(
@@ -27,15 +37,34 @@ class LibraryViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    val savedNovels: StateFlow<List<NovelEntity>> = novelRepository.getBookmarkedNovels()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    val savedNovels: StateFlow<List<NovelEntity>> = combine(
+        novelRepository.getBookmarkedNovels(),
+        currentSortOption,
+        recentReads
+    ) { novels, sortOption, recent ->
+        when (sortOption) {
+            SortOption.DEFAULT -> novels
+            SortOption.ALPHABETICAL -> novels.sortedBy { it.title }
+            SortOption.RECENTLY_READ -> {
+                val recentMap = recent.associateBy { it.novelUrl }
+                novels.sortedByDescending { recentMap[it.url]?.lastReadTimestamp ?: 0L }
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     private val _popularNovels = MutableStateFlow<List<com.example.vantaread.data.model.Novel>>(emptyList())
     val popularNovels: StateFlow<List<com.example.vantaread.data.model.Novel>> = _popularNovels
+
+    private val _isLoadingPopularNovels = MutableStateFlow(true)
+    val isLoadingPopularNovels: StateFlow<Boolean> = _isLoadingPopularNovels
+
+    fun setSortOption(option: SortOption) {
+        currentSortOption.value = option
+    }
 
     init {
         viewModelScope.launch {
@@ -47,10 +76,13 @@ class LibraryViewModel @Inject constructor(
 
     private fun fetchPopularNovels(sourceId: String) {
         viewModelScope.launch {
+            _isLoadingPopularNovels.value = true
             try {
                 _popularNovels.value = novelRepository.getPopularNovels(sourceId)
             } catch (e: Exception) {
-                // Handle error
+                _popularNovels.value = emptyList() // clear on error
+            } finally {
+                _isLoadingPopularNovels.value = false
             }
         }
     }
