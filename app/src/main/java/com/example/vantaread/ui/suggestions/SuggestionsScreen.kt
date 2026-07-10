@@ -65,7 +65,7 @@ fun SuggestionsScreen(
                     NovelItemUi(
                         title = novel.title,
                         coverUrl = novel.coverUrl,
-                        onClick = { onNovelClick(novel.url, activeSourceId) }
+                        onClick = { onNovelClick(novel.url, novel.sourceId.ifBlank { activeSourceId }) }
                     )
                 }
             }

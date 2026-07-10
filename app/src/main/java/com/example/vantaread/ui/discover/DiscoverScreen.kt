@@ -120,7 +120,10 @@ fun DiscoverScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(searchResults) { novel ->
-                        SearchResultItem(novel = novel, onClick = { onNovelClick(novel.url, activeSourceId) })
+                        SearchResultItem(
+                            novel = novel,
+                            onClick = { onNovelClick(novel.url, novel.sourceId.ifBlank { activeSourceId }) }
+                        )
                     }
                 }
             }

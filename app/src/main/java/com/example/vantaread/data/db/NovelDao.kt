@@ -38,4 +38,23 @@ interface NovelDao {
     
     @Query("SELECT * FROM chapters WHERE novelUrl = :novelUrl ORDER BY chapterIndex ASC")
     suspend fun getChaptersListForNovel(novelUrl: String): List<ChapterEntity>
+
+    @Query("""
+        SELECT
+            chapters.url AS chapterUrl,
+            chapters.novelUrl AS novelUrl,
+            chapters.title AS chapterTitle,
+            chapters.chapterIndex AS chapterIndex,
+            novels.title AS novelTitle,
+            novels.coverUrl AS coverUrl,
+            novels.sourceId AS sourceId
+        FROM chapters
+        INNER JOIN novels ON chapters.novelUrl = novels.url
+        WHERE chapters.isDownloaded = 1 AND chapters.content IS NOT NULL AND chapters.content != ''
+        ORDER BY novels.title COLLATE NOCASE ASC, chapters.chapterIndex ASC
+    """)
+    fun getDownloadedChapters(): Flow<List<DownloadedChapter>>
+
+    @Query("UPDATE chapters SET content = NULL, isDownloaded = 0 WHERE url = :chapterUrl")
+    suspend fun removeDownloadedChapter(chapterUrl: String)
 }

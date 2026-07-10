@@ -1,6 +1,7 @@
 package com.example.vantaread.data.repository
 
 import com.example.vantaread.data.db.ChapterEntity
+import com.example.vantaread.data.db.DownloadedChapter
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.NovelEntity
 import com.example.vantaread.data.db.ReadingHistoryDao
@@ -27,15 +28,42 @@ class NovelRepository @Inject constructor(
     // --- Network Calls ---
     
     suspend fun searchNovels(query: String, sourceId: String): List<Novel> {
-        return getSource(sourceId).searchNovels(query)
+        val normalizedSourceId = SourceCatalog.normalize(sourceId)
+        val primaryResults = runCatching {
+            getSource(normalizedSourceId).searchNovels(query).map { it.withSource(normalizedSourceId) }
+        }.getOrElse { emptyList() }
+        if (primaryResults.isNotEmpty() || normalizedSourceId == SourceCatalog.DEFAULT_SOURCE_ID) {
+            return primaryResults
+        }
+
+        return runCatching {
+            getSource(SourceCatalog.DEFAULT_SOURCE_ID).searchNovels(query)
+                .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
+        }.getOrElse { emptyList() }
     }
 
     suspend fun getPopularNovels(sourceId: String): List<Novel> {
-        return getSource(sourceId).getPopularNovels()
+        val normalizedSourceId = SourceCatalog.normalize(sourceId)
+        val primaryResults = runCatching {
+            getSource(normalizedSourceId).getPopularNovels().map { it.withSource(normalizedSourceId) }
+        }.getOrElse { emptyList() }
+        if (primaryResults.isNotEmpty() || normalizedSourceId == SourceCatalog.DEFAULT_SOURCE_ID) {
+            return primaryResults
+        }
+
+        return runCatching {
+            getSource(SourceCatalog.DEFAULT_SOURCE_ID).getPopularNovels()
+                .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
+        }.getOrElse { emptyList() }
+    }
+
+    private fun Novel.withSource(sourceId: String): Novel {
+        return if (this.sourceId == sourceId) this else copy(sourceId = sourceId)
     }
 
     suspend fun getNovelDetails(novelUrl: String, sourceId: String): NovelDetails {
-        val details = getSource(sourceId).getNovelDetails(novelUrl)
+        val resolvedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
+        val details = getSource(resolvedSourceId).getNovelDetails(novelUrl)
         
         val existing = novelDao.getNovel(novelUrl)
         novelDao.insertNovel(
@@ -51,7 +79,7 @@ class NovelRepository @Inject constructor(
                 isBookmarked = existing?.isBookmarked ?: false,
                 currentChapterUrl = existing?.currentChapterUrl,
                 currentScrollPosition = existing?.currentScrollPosition ?: 0,
-                sourceId = SourceCatalog.normalize(sourceId)
+                sourceId = resolvedSourceId
             )
         )
         
@@ -59,7 +87,7 @@ class NovelRepository @Inject constructor(
     }
 
     suspend fun fetchAndCacheChapters(novelUrl: String, sourceId: String): List<Chapter> {
-        val normalizedSourceId = SourceCatalog.normalize(sourceId)
+        val normalizedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
         val chapters = getSource(normalizedSourceId).getChapterList(novelUrl)
         novelDao.insertChapters(chapters.map {
             ChapterEntity(
@@ -75,12 +103,13 @@ class NovelRepository @Inject constructor(
     }
 
     suspend fun getChapterContent(chapterUrl: String, sourceId: String): String {
+        val resolvedSourceId = SourceCatalog.detectSourceId(chapterUrl) ?: SourceCatalog.normalize(sourceId)
         val chapterEntity = novelDao.getChapter(chapterUrl)
         if (chapterEntity?.isDownloaded == true && !chapterEntity.content.isNullOrBlank()) {
             return chapterEntity.content
         }
         return try {
-            getSource(sourceId).getChapterContent(chapterUrl)
+            getSource(resolvedSourceId).getChapterContent(chapterUrl)
         } catch (e: Exception) {
             "Error loading chapter content: ${e.message}"
         }
@@ -128,6 +157,14 @@ class NovelRepository @Inject constructor(
     
     suspend fun getChaptersListForNovelDb(novelUrl: String): List<ChapterEntity> {
         return novelDao.getChaptersListForNovel(novelUrl)
+    }
+
+    fun getDownloadedChapters(): Flow<List<DownloadedChapter>> {
+        return novelDao.getDownloadedChapters()
+    }
+
+    suspend fun removeDownloadedChapter(chapterUrl: String) {
+        novelDao.removeDownloadedChapter(chapterUrl)
     }
 
     // --- Reading History ---

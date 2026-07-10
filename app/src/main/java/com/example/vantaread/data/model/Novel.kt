@@ -7,5 +7,6 @@ data class Novel(
     val author: String = "",
     val genres: List<String> = emptyList(),
     val status: String = "",
-    val latestUpdate: String = ""
+    val latestUpdate: String = "",
+    val sourceId: String = ""
 )

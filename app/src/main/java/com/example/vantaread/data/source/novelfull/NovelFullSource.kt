@@ -38,7 +38,7 @@ class NovelFullSource(private val context: Context) : NovelSource {
             val novelUrl = absoluteUrl(titleElement.attr("href"))
             val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
             
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
         }
         
         novels
@@ -57,7 +57,7 @@ class NovelFullSource(private val context: Context) : NovelSource {
             val novelUrl = absoluteUrl(titleElement.attr("href"))
             val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
             
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
         }
         
         novels

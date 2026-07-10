@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -19,6 +20,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.vantaread.ui.detail.NovelDetailScreen
 import com.example.vantaread.ui.discover.DiscoverScreen
+import com.example.vantaread.ui.downloads.DownloadsScreen
 import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
@@ -30,7 +32,12 @@ fun MainNavigation() {
     val backStack = rememberNavBackStack(Library)
     val currentRoute = backStack.lastOrNull()
     
-    val showBottomBar = currentRoute is Library || currentRoute is Discover || currentRoute is Suggestions || currentRoute is History || currentRoute is Settings
+    val showBottomBar = currentRoute is Library ||
+        currentRoute is Discover ||
+        currentRoute is Suggestions ||
+        currentRoute is Downloads ||
+        currentRoute is History ||
+        currentRoute is Settings
 
     Scaffold(
         bottomBar = {
@@ -68,6 +75,17 @@ fun MainNavigation() {
                         },
                         icon = { Icon(Icons.Filled.Explore, contentDescription = "Suggestions") },
                         label = { Text("Suggestions") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute is Downloads,
+                        onClick = {
+                            if (currentRoute !is Downloads) {
+                                backStack.clear()
+                                backStack.add(Downloads)
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.DownloadDone, contentDescription = "Downloads") },
+                        label = { Text("Downloads") }
                     )
                     NavigationBarItem(
                         selected = currentRoute is History,
@@ -119,6 +137,13 @@ fun MainNavigation() {
                     SuggestionsScreen(
                         onNavigateBack = { backStack.removeLast() },
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
+                    )
+                }
+                entry<Downloads> {
+                    DownloadsScreen(
+                        onChapterClick = { chapterUrl, sourceId, novelUrl, chapterTitle ->
+                            backStack.add(Reader(chapterUrl, sourceId, novelUrl, chapterTitle))
+                        }
                     )
                 }
                 entry<History> {

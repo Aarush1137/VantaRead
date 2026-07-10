@@ -5,10 +5,10 @@ import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
-import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.safety.Safelist
 import java.net.URLEncoder
 
@@ -16,6 +16,15 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     override val sourceId = "royalroad"
     override val sourceName = "Royal Road"
     private val baseUrl = "https://www.royalroad.com"
+    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+    private fun fetchDocument(url: String, referer: String = baseUrl): Document {
+        return Jsoup.connect(url)
+            .userAgent(userAgent)
+            .referrer(referer)
+            .timeout(30000)
+            .get()
+    }
 
     private fun absoluteUrl(url: String): String {
         return when {
@@ -34,7 +43,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/fictions/best-rated"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = fetchDocument(url)
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".fiction-list-item")
@@ -45,7 +54,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
             val novelUrl = absoluteUrl(titleElement.attr("href"))
             val coverUrl = coverUrlFrom(item)
             
-            novels.add(Novel(novelUrl, title, coverUrl, author = "", status = ""))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
         }
         
         novels
@@ -53,7 +62,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/fictions/search?title=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = fetchDocument(url)
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".fiction-list-item")
@@ -64,14 +73,14 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
             val novelUrl = absoluteUrl(titleElement.attr("href"))
             val coverUrl = coverUrlFrom(item)
             
-            novels.add(Novel(novelUrl, title, coverUrl, author = "", status = ""))
+            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
         }
         
         novels
     }
 
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, novelUrl)
+        val doc = fetchDocument(novelUrl)
         
         val title = doc.selectFirst("h1.font-white")?.text() ?: doc.title()
         val coverUrl = doc.selectFirst("meta[property=og:image]")?.attr("content")
@@ -108,7 +117,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, novelUrl)
+        val doc = fetchDocument(novelUrl)
         
         val chapters = mutableListOf<Chapter>()
         val elements = doc.select("#chapters tbody tr, tr.chapter-row")
@@ -125,7 +134,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, chapterUrl)
+        val doc = fetchDocument(chapterUrl, referer = chapterUrl.substringBefore("/chapter/", missingDelimiterValue = baseUrl))
         
         val contentElement = doc.selectFirst(".chapter-content")
         

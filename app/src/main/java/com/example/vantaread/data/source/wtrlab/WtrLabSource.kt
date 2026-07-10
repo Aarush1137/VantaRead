@@ -5,10 +5,11 @@ import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
-import com.example.vantaread.data.source.util.WebViewScraper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import javax.inject.Inject
 
 class WtrLabSource @Inject constructor(
@@ -17,6 +18,15 @@ class WtrLabSource @Inject constructor(
     override val sourceId: String = "wtrlab"
     override val sourceName: String = "WTR-Lab"
     private val baseUrl = "https://wtr-lab.com"
+    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+    private fun fetchDocument(url: String): Document {
+        return Jsoup.connect(url)
+            .userAgent(userAgent)
+            .referrer(baseUrl)
+            .timeout(30000)
+            .get()
+    }
 
     private fun absoluteUrl(url: String): String {
         return when {
@@ -39,7 +49,8 @@ class WtrLabSource @Inject constructor(
                 Novel(
                     url = novelUrl,
                     title = title,
-                    coverUrl = coverUrl
+                    coverUrl = coverUrl,
+                    sourceId = sourceId
                 )
             } else {
                 null
@@ -49,7 +60,7 @@ class WtrLabSource @Inject constructor(
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/en/novel-list"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = fetchDocument(url)
 
         val normalizedQuery = query.trim().lowercase()
         parseNovelCards(doc).filter { novel ->
@@ -59,13 +70,13 @@ class WtrLabSource @Inject constructor(
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/en/novel-list"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = fetchDocument(url)
 
         parseNovelCards(doc).take(20)
     }
 
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, novelUrl)
+        val doc = fetchDocument(novelUrl)
         
         val title = doc.selectFirst("h1")?.text()
             ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.removePrefix("Read ")?.substringBefore(" RAW English Translation")
@@ -109,7 +120,7 @@ class WtrLabSource @Inject constructor(
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, novelUrl)
+        val doc = fetchDocument(novelUrl)
         val chapters = mutableListOf<Chapter>()
         
         // Find links that look like chapters
@@ -124,14 +135,33 @@ class WtrLabSource @Inject constructor(
             )
         }
         
-        // Filter out duplicate chapter links (WTR-Lab might have multiple links to the same chapter)
-        chapters.distinctBy { it.url }.mapIndexed { index, chapter -> 
+        val distinctChapters = chapters.distinctBy { it.url }.mapIndexed { index, chapter ->
             chapter.copy(index = index)
+        }
+
+        if (distinctChapters.isNotEmpty()) {
+            return@withContext distinctChapters
+        }
+
+        val chapterCount = Regex(""""(?:raw_)?chapter_count":(\d+)""")
+            .find(doc.html())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?: 0
+
+        (1..chapterCount).map { chapterNumber ->
+            Chapter(
+                url = "$novelUrl/chapter-$chapterNumber",
+                novelUrl = novelUrl,
+                title = "Chapter $chapterNumber",
+                index = chapterNumber - 1
+            )
         }
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {
-        val doc = WebViewScraper.getHtml(context, chapterUrl)
+        val doc = fetchDocument(chapterUrl)
         
         // WTR-Lab chapter content
         val contentElement = doc.selectFirst("article, .chapter-content, #chapter-content")
