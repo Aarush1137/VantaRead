@@ -34,21 +34,25 @@ class NovelRepository @Inject constructor(
 
     suspend fun getNovelDetails(novelUrl: String, sourceId: String): NovelDetails {
         val details = getSource(sourceId).getNovelDetails(novelUrl)
-        // Optionally update the local DB if it's bookmarked
+        
         val existing = novelDao.getNovel(novelUrl)
-        if (existing != null) {
-            novelDao.insertNovel(
-                existing.copy(
-                    title = details.title,
-                    coverUrl = details.coverUrl,
-                    synopsis = details.synopsis,
-                    author = details.author,
-                    genres = details.genres.joinToString(","),
-                    status = details.status,
-                    latestUpdate = details.latestUpdate
-                )
+        novelDao.insertNovel(
+            NovelEntity(
+                url = details.url,
+                title = details.title,
+                coverUrl = details.coverUrl,
+                synopsis = details.synopsis,
+                author = details.author,
+                genres = details.genres.joinToString(","),
+                status = details.status,
+                latestUpdate = details.latestUpdate,
+                isBookmarked = existing?.isBookmarked ?: false,
+                currentChapterUrl = existing?.currentChapterUrl,
+                currentScrollPosition = existing?.currentScrollPosition ?: 0,
+                sourceId = sourceId
             )
-        }
+        )
+        
         return details
     }
 
