@@ -6,6 +6,10 @@ import com.example.vantaread.data.db.AppDatabase
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.ReadingHistoryDao
 import com.example.vantaread.data.repository.NovelRepository
+import com.example.vantaread.data.source.NovelSource
+import com.example.vantaread.data.source.lightnovelpub.LightNovelPubSource
+import com.example.vantaread.data.source.novelfull.NovelFullSource
+import com.example.vantaread.data.source.royalroad.RoyalRoadSource
 import com.example.vantaread.data.source.wtrlab.WtrLabSource
 import dagger.Module
 import dagger.Provides
@@ -40,16 +44,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelSources(@ApplicationContext context: Context): Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource> {
-        val wtrLab = WtrLabSource(context)
-        val novelFull = com.example.vantaread.data.source.novelfull.NovelFullSource(context)
-        val royalRoad = com.example.vantaread.data.source.royalroad.RoyalRoadSource(context)
-        val lightNovelPub = com.example.vantaread.data.source.lightnovelpub.LightNovelPubSource(context)
+    fun provideNovelSources(
+        novelFullSource: NovelFullSource,
+        royalRoadSource: RoyalRoadSource,
+        lightNovelPubSource: LightNovelPubSource,
+        wtrLabSource: WtrLabSource
+    ): Map<String, @JvmSuppressWildcards NovelSource> {
         return mapOf(
-            wtrLab.sourceId to wtrLab,
-            novelFull.sourceId to novelFull,
-            royalRoad.sourceId to royalRoad,
-            lightNovelPub.sourceId to lightNovelPub
+            novelFullSource.sourceId to novelFullSource,
+            royalRoadSource.sourceId to royalRoadSource,
+            lightNovelPubSource.sourceId to lightNovelPubSource,
+            wtrLabSource.sourceId to wtrLabSource
         )
     }
 
