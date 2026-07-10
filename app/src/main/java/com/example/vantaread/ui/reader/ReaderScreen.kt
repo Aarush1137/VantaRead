@@ -37,28 +37,17 @@ import androidx.core.text.HtmlCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.vantaread.data.model.ReaderSettings
+import com.example.vantaread.data.model.ReaderFont
+import com.example.vantaread.data.model.ReaderTheme
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 
-data class ReaderSettings(
-    val themeMode: ReaderTheme = ReaderTheme.VANTA_BLACK,
-    val fontSizeSp: Int = 18,
-    val fontType: ReaderFont = ReaderFont.SERIF,
-    val lineSpacingMultiplier: Float = 1.5f,
-    val horizontalMarginDp: Int = 16,
-    val accentColorHex: String = "#8A2BE2" // Vanta Purple Default
-)
 
-enum class ReaderTheme(val backgroundColor: Color, val textColor: Color) {
-    VANTA_BLACK(Color(0xFF000000), Color(0xFFE0E0E0)),
-    CHARCOAL(Color(0xFF1C1C1E), Color(0xFFE5E5EA)),
-    SEPIA(Color(0xFFF4ECD8), Color(0xFF5B4636)),
-    LIGHT(Color(0xFFFFFFFF), Color(0xFF1C1C1E))
-}
-
-enum class ReaderFont(val fontFamily: FontFamily, val androidTypeface: android.graphics.Typeface) {
-    SERIF(FontFamily.Serif, android.graphics.Typeface.SERIF),
-    SANS_SERIF(FontFamily.SansSerif, android.graphics.Typeface.SANS_SERIF),
-    MONOSPACE(FontFamily.Monospace, android.graphics.Typeface.MONOSPACE)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +71,7 @@ fun ReaderScreen(
     val currentChapterIndex by viewModel.currentChapterIndex.collectAsState()
     val initialScrollIndex by viewModel.initialScrollIndex.collectAsState()
     
-    var settings by remember { mutableStateOf(ReaderSettings()) }
+    val settings by viewModel.settings.collectAsState()
     
     // Parse HTML into chunks for the LazyColumn
     val paragraphs = remember(content) {
@@ -145,6 +134,32 @@ fun ReaderScreen(
 
     val accentColor = Color(android.graphics.Color.parseColor(settings.accentColorHex))
 
+    // Pull to next chapter logic
+    var overscrollAccumulator by remember { mutableFloatStateOf(0f) }
+    
+    val nestedScrollConnection = remember(currentChapterIndex) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (available.y < 0) {
+                    overscrollAccumulator += available.y
+                    if (overscrollAccumulator < -200f) { // Pull threshold
+                        overscrollAccumulator = 0f
+                        viewModel.navigateToChapter(currentChapterIndex + 1)?.let {
+                            onNavigateToChapter(it.url, it.title)
+                        }
+                    }
+                } else if (consumed.y != 0f) {
+                    overscrollAccumulator = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     // Calculate progress
     val currentProgress = if (paragraphs.isNotEmpty()) {
         val firstVisible = listState.firstVisibleItemIndex
@@ -176,7 +191,24 @@ fun ReaderScreen(
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { offset ->
+                                    val width = size.width
+                                    when {
+                                        offset.x < width * 0.25f -> scrollPage(down = false)
+                                        offset.x > width * 0.75f -> scrollPage(down = true)
+                                        else -> {
+                                            showHud = !showHud
+                                            if (showHud) notifyInteraction()
+                                        }
+                                    }
+                                }
+                            )
+                        },
                     contentPadding = PaddingValues(
                         horizontal = settings.horizontalMarginDp.dp,
                         vertical = 80.dp // Padding to prevent HUD from overlapping text at boundaries
@@ -202,43 +234,6 @@ fun ReaderScreen(
             }
         }
 
-        // Layer 2: Gesture Detection Layer
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(0.25f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { scrollPage(down = false) }
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(0.5f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { 
-                            showHud = !showHud 
-                            if (showHud) notifyInteraction()
-                        }
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(0.25f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { scrollPage(down = true) }
-                    )
-            )
-        }
-        
         // Auto-scrolling indicator
         if (isAutoScrolling && !showHud) {
             Surface(
@@ -313,7 +308,7 @@ fun ReaderScreen(
                 isAutoScrolling = isAutoScrolling,
                 autoScrollSpeed = autoScrollSpeed,
                 onSettingsChanged = { 
-                    settings = it
+                    viewModel.updateSettings(it)
                     notifyInteraction()
                 },
                 onToggleAutoScroll = {

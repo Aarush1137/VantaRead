@@ -3,6 +3,8 @@ package com.example.vantaread.ui.reader
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vantaread.data.db.ChapterEntity
+import com.example.vantaread.data.model.ReaderSettings
+import com.example.vantaread.data.prefs.ReaderPreferencesManager
 import com.example.vantaread.data.repository.NovelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -15,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
-    private val novelRepository: NovelRepository
+    private val novelRepository: NovelRepository,
+    private val preferencesManager: ReaderPreferencesManager
 ) : ViewModel() {
 
     var chapterUrl: String = ""
@@ -45,6 +48,8 @@ class ReaderViewModel @Inject constructor(
 
     private val _initialScrollIndex = MutableStateFlow(0)
     val initialScrollIndex: StateFlow<Int> = _initialScrollIndex.asStateFlow()
+
+    val settings: StateFlow<ReaderSettings> = preferencesManager.settings
 
     private var saveScrollJob: Job? = null
 
@@ -145,5 +150,9 @@ class ReaderViewModel @Inject constructor(
             return chapterList[index]
         }
         return null
+    }
+
+    fun updateSettings(newSettings: ReaderSettings) {
+        preferencesManager.updateSettings(newSettings)
     }
 }

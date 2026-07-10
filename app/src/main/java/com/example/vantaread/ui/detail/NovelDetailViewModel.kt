@@ -52,6 +52,22 @@ class NovelDetailViewModel @Inject constructor(
     }
 
     private fun loadNovelDetails() {
+        // Start collecting from DB immediately for fast display
+        viewModelScope.launch {
+            novelRepository.getChaptersForNovelDb(novelUrl).collect { dbChapters ->
+                if (dbChapters.isNotEmpty()) {
+                    _chapters.value = dbChapters
+                }
+                
+                val readUrls = novelRepository.getReadChapterUrls(novelUrl)
+                _readChapterUrls.value = readUrls.toSet()
+                
+                val lastRead = novelRepository.getLastReadChapter(novelUrl)
+                _lastReadChapterUrl.value = lastRead?.chapterUrl
+            }
+        }
+        
+        // Fetch updates from network in background
         viewModelScope.launch {
             try {
                 // Fetch details from network
@@ -59,20 +75,7 @@ class NovelDetailViewModel @Inject constructor(
                 _novelDetails.value = details
                 
                 // Fetch chapters from network and cache
-                val fetchedChapters = novelRepository.fetchAndCacheChapters(novelUrl, sourceId)
-                
-                // Load chapters from DB to get read status
-                novelRepository.getChaptersForNovelDb(novelUrl).collect { dbChapters ->
-                    if (dbChapters.isNotEmpty()) {
-                        _chapters.value = dbChapters
-                    }
-                    
-                    val readUrls = novelRepository.getReadChapterUrls(novelUrl)
-                    _readChapterUrls.value = readUrls.toSet()
-                    
-                    val lastRead = novelRepository.getLastReadChapter(novelUrl)
-                    _lastReadChapterUrl.value = lastRead?.chapterUrl
-                }
+                novelRepository.fetchAndCacheChapters(novelUrl, sourceId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

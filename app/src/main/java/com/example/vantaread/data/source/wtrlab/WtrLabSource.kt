@@ -1,15 +1,17 @@
 package com.example.vantaread.data.source.wtrlab
 
+import android.content.Context
 import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
+import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 
-class WtrLabSource : NovelSource {
+class WtrLabSource(private val context: Context) : NovelSource {
     override val sourceId = "wtr-lab"
     override val sourceName = "WTR Lab"
     private val baseUrl = "https://wtr-lab.com"
@@ -17,7 +19,7 @@ class WtrLabSource : NovelSource {
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/en/"
-        val doc = Jsoup.connect(url).userAgent(userAgent).get()
+        val doc = WebViewScraper.getHtml(context, url)
         
         val novels = mutableListOf<Novel>()
         val elements = doc.select("a[href^=/en/novel/]:has(img)")
@@ -38,7 +40,7 @@ class WtrLabSource : NovelSource {
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val searchUrl = "$baseUrl/en/novel-list?search=$query"
-        val doc = Jsoup.connect(searchUrl).userAgent(userAgent).get()
+        val doc = WebViewScraper.getHtml(context, searchUrl)
         
         val novels = mutableListOf<Novel>()
         val elements = doc.select("a[href^=/en/novel/]:has(img)")
@@ -58,7 +60,7 @@ class WtrLabSource : NovelSource {
     }
 
     override suspend fun getNovelDetails(novelUrl: String): NovelDetails = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(novelUrl).userAgent(userAgent).get()
+        val doc = WebViewScraper.getHtml(context, novelUrl)
             
         // TODO: Selectors need adjustment
         val title = doc.selectFirst("h1")?.text() ?: ""
@@ -74,7 +76,7 @@ class WtrLabSource : NovelSource {
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(novelUrl).userAgent(userAgent).get()
+        val doc = WebViewScraper.getHtml(context, novelUrl)
             
         val chapters = mutableListOf<Chapter>()
         val uniqueUrls = mutableSetOf<String>()
@@ -97,7 +99,7 @@ class WtrLabSource : NovelSource {
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(chapterUrl).userAgent(userAgent).get()
+        val doc = WebViewScraper.getHtml(context, chapterUrl)
             
         // TODO: Selectors need adjustment
         val contentElement = doc.selectFirst(".chapter-content, .text-content")
