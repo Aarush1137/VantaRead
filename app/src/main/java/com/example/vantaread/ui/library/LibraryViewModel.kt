@@ -12,10 +12,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.vantaread.data.db.ReadingHistoryEntity
+import com.example.vantaread.data.prefs.SourcePreferencesManager
+import javax.inject.Inject
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    private val novelRepository: NovelRepository
+    private val novelRepository: NovelRepository,
+    private val sourcePrefs: SourcePreferencesManager
 ) : ViewModel() {
 
     val recentReads: StateFlow<List<ReadingHistoryEntity>> = novelRepository.getRecentNovels()
@@ -36,14 +39,17 @@ class LibraryViewModel @Inject constructor(
     val popularNovels: StateFlow<List<com.example.vantaread.data.model.Novel>> = _popularNovels
 
     init {
-        fetchPopularNovels()
+        viewModelScope.launch {
+            sourcePrefs.activeSourceId.collect { sourceId ->
+                fetchPopularNovels(sourceId)
+            }
+        }
     }
 
-    private fun fetchPopularNovels() {
+    private fun fetchPopularNovels(sourceId: String) {
         viewModelScope.launch {
             try {
-                // For now, hardcode "wtr-lab" as the default source for dashboard suggestions
-                _popularNovels.value = novelRepository.getPopularNovels("wtr-lab")
+                _popularNovels.value = novelRepository.getPopularNovels(sourceId)
             } catch (e: Exception) {
                 // Handle error
             }

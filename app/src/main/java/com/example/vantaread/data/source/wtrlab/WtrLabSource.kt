@@ -82,14 +82,14 @@ class WtrLabSource(private val context: Context) : NovelSource {
         val uniqueUrls = mutableSetOf<String>()
         
         // Find any link that points to a chapter for this novel
-        val elements = doc.select("a[href*=/chapter]")
+        val elements = doc.select(".chapter-list a, .list-chapter a, a[href*=/chapter/], a[href*=-chapter-]")
         
         for (element in elements) {
             val url = element.attr("href").let { if (it.startsWith("http")) it else "$baseUrl$it" }
             val title = element.text().trim()
             
             // Only add if it's a valid title and we haven't added this chapter URL yet
-            if (title.isNotEmpty() && uniqueUrls.add(url)) {
+            if (title.isNotEmpty() && title.contains("Chapter", ignoreCase = true) && uniqueUrls.add(url)) {
                 chapters.add(Chapter(url, novelUrl, title, chapters.size))
             }
         }

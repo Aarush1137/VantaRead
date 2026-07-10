@@ -44,10 +44,12 @@ object AppModule {
         val wtrLab = WtrLabSource(context)
         val novelFull = com.example.vantaread.data.source.novelfull.NovelFullSource(context)
         val royalRoad = com.example.vantaread.data.source.royalroad.RoyalRoadSource(context)
+        val lightNovelPub = com.example.vantaread.data.source.lightnovelpub.LightNovelPubSource(context)
         return mapOf(
             wtrLab.sourceId to wtrLab,
             novelFull.sourceId to novelFull,
-            royalRoad.sourceId to royalRoad
+            royalRoad.sourceId to royalRoad,
+            lightNovelPub.sourceId to lightNovelPub
         )
     }
 

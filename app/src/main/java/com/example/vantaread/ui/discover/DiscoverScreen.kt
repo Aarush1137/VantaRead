@@ -8,8 +8,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +32,16 @@ fun DiscoverScreen(
 ) {
     val searchResults by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val activeSourceId by viewModel.activeSourceId.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    val sources = mapOf(
+        "novelfull" to "NovelFull",
+        "wtr-lab" to "WTR Lab",
+        "royalroad" to "Royal Road",
+        "lightnovelpub" to "LightNovelPub"
+    )
 
     Scaffold(
         topBar = {
@@ -40,8 +50,8 @@ fun DiscoverScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
-                        placeholder = { Text("Search novels...") },
+                        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                        placeholder = { Text("Search ${sources[activeSourceId]}...") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { viewModel.search(searchQuery) }),
@@ -54,7 +64,34 @@ fun DiscoverScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Select Source")
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            sources.forEach { (id, name) ->
+                                DropdownMenuItem(
+                                    text = { Text(name) },
+                                    onClick = {
+                                        viewModel.setActiveSource(id)
+                                        expanded = false
+                                        if (searchQuery.isNotBlank()) {
+                                            viewModel.search(searchQuery)
+                                        }
+                                    },
+                                    trailingIcon = if (activeSourceId == id) {
+                                        { Text("✓") }
+                                    } else null
+                                )
+                            }
+                        }
                     }
                 }
             )
@@ -75,7 +112,7 @@ fun DiscoverScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(searchResults) { novel ->
-                        SearchResultItem(novel = novel, onClick = { onNovelClick(novel.url, viewModel.currentSourceId) })
+                        SearchResultItem(novel = novel, onClick = { onNovelClick(novel.url, activeSourceId) })
                     }
                 }
             }
