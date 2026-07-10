@@ -57,4 +57,10 @@ interface NovelDao {
 
     @Query("UPDATE chapters SET content = NULL, isDownloaded = 0 WHERE url = :chapterUrl")
     suspend fun removeDownloadedChapter(chapterUrl: String)
+
+    @Query("SELECT COUNT(*) FROM chapters WHERE novelUrl = :novelUrl")
+    suspend fun getChapterCountForNovel(novelUrl: String): Int
+
+    @Query("SELECT COUNT(*) FROM chapters WHERE novelUrl = :novelUrl AND isDownloaded = 1 AND content IS NOT NULL AND content != ''")
+    suspend fun getDownloadedChapterCountForNovel(novelUrl: String): Int
 }

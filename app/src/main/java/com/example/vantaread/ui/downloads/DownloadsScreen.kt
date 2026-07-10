@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +51,7 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel()
 ) {
     val downloadedChapters by viewModel.downloadedChapters.collectAsState()
+    val activeDownloads by viewModel.activeDownloads.collectAsState()
 
     Scaffold(
         topBar = {
@@ -58,7 +60,7 @@ fun DownloadsScreen(
             )
         }
     ) { paddingValues ->
-        if (downloadedChapters.isEmpty()) {
+        if (downloadedChapters.isEmpty() && activeDownloads.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -88,6 +90,33 @@ fun DownloadsScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (activeDownloads.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "In Progress",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    items(
+                        items = activeDownloads,
+                        key = { it.id }
+                    ) { download ->
+                        ActiveDownloadItem(download)
+                    }
+
+                    item {
+                        Text(
+                            text = "Downloaded",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                        )
+                    }
+                }
+
                 items(
                     items = downloadedChapters,
                     key = { it.chapterUrl }
@@ -105,6 +134,52 @@ fun DownloadsScreen(
                         onRemove = { viewModel.removeDownload(chapter.chapterUrl) }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActiveDownloadItem(download: DownloadWorkStatus) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Downloading,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = download.novelTitle,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = download.chapterTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = listOf(download.state, download.progressText)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" - "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

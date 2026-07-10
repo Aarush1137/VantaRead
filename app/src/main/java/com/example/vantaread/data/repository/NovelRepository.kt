@@ -102,6 +102,24 @@ class NovelRepository @Inject constructor(
         return chapters
     }
 
+    suspend fun fetchAndCacheChapterPage(novelUrl: String, sourceId: String, page: Int): List<Chapter> {
+        val normalizedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
+        val chapters = getSource(normalizedSourceId).getChapterPage(novelUrl, page)
+        if (chapters.isNotEmpty()) {
+            novelDao.insertChapters(chapters.map {
+                ChapterEntity(
+                    url = it.url,
+                    novelUrl = novelUrl,
+                    title = it.title,
+                    chapterIndex = it.index,
+                    isDownloaded = false,
+                    content = null
+                )
+            })
+        }
+        return chapters
+    }
+
     suspend fun getChapterContent(chapterUrl: String, sourceId: String): String {
         val resolvedSourceId = SourceCatalog.detectSourceId(chapterUrl) ?: SourceCatalog.normalize(sourceId)
         val chapterEntity = novelDao.getChapter(chapterUrl)

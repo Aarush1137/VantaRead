@@ -8,6 +8,7 @@ import com.example.vantaread.data.db.NovelEntity
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.repository.NovelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,14 +48,34 @@ class NovelDetailViewModel @Inject constructor(
     private val _downloadMessage = MutableStateFlow<String?>(null)
     val downloadMessage: StateFlow<String?> = _downloadMessage.asStateFlow()
 
+    private val _isLoadingMoreChapters = MutableStateFlow(false)
+    val isLoadingMoreChapters: StateFlow<Boolean> = _isLoadingMoreChapters.asStateFlow()
+
+    private val _canLoadMoreChapters = MutableStateFlow(false)
+    val canLoadMoreChapters: StateFlow<Boolean> = _canLoadMoreChapters.asStateFlow()
+
+    private var cachedNovelJob: Job? = null
+    private var chaptersJob: Job? = null
+    private var networkJob: Job? = null
+    private var nextChapterPage = 1
+
     fun initialize(novelUrl: String, sourceId: String) {
-        if (this.novelUrl == novelUrl) return
+        if (this.novelUrl == novelUrl && this.sourceId == sourceId) return
+        cachedNovelJob?.cancel()
+        chaptersJob?.cancel()
+        networkJob?.cancel()
+
         this.novelUrl = novelUrl
         this.sourceId = sourceId
         
         _novelDetails.value = null
         _chapters.value = emptyList()
         _isBookmarked.value = false
+        _readChapterUrls.value = emptySet()
+        _lastReadChapterUrl.value = null
+        _isLoadingMoreChapters.value = false
+        _canLoadMoreChapters.value = sourceId == "lightnovelpub"
+        nextChapterPage = 1
         
         loadNovelDetails()
         checkBookmarkStatus()
@@ -74,39 +95,72 @@ class NovelDetailViewModel @Inject constructor(
     }
 
     private fun loadNovelDetails() {
-        viewModelScope.launch {
+        val activeNovelUrl = novelUrl
+        val activeSourceId = sourceId
+
+        cachedNovelJob = viewModelScope.launch {
             novelRepository.getNovelFromDb(novelUrl)?.let { cachedNovel ->
+                if (this@NovelDetailViewModel.novelUrl != activeNovelUrl) return@let
                 _novelDetails.value = cachedNovel.toDetails()
                 _isBookmarked.value = cachedNovel.isBookmarked
             }
         }
 
         // Start collecting from DB immediately for fast display
-        viewModelScope.launch {
-            novelRepository.getChaptersForNovelDb(novelUrl).collect { dbChapters ->
+        chaptersJob = viewModelScope.launch {
+            novelRepository.getChaptersForNovelDb(activeNovelUrl).collect { dbChapters ->
+                if (this@NovelDetailViewModel.novelUrl != activeNovelUrl) return@collect
                 if (dbChapters.isNotEmpty()) {
                     _chapters.value = dbChapters
                 }
                 
-                val readUrls = novelRepository.getReadChapterUrls(novelUrl)
+                val readUrls = novelRepository.getReadChapterUrls(activeNovelUrl)
                 _readChapterUrls.value = readUrls.toSet()
                 
-                val lastRead = novelRepository.getLastReadChapter(novelUrl)
+                val lastRead = novelRepository.getLastReadChapter(activeNovelUrl)
                 _lastReadChapterUrl.value = lastRead?.chapterUrl
             }
         }
         
         // Fetch updates from network in background
-        viewModelScope.launch {
+        networkJob = viewModelScope.launch {
             try {
                 // Fetch details from network
-                val details = novelRepository.getNovelDetails(novelUrl, sourceId)
+                val details = novelRepository.getNovelDetails(activeNovelUrl, activeSourceId)
+                if (this@NovelDetailViewModel.novelUrl != activeNovelUrl) return@launch
                 _novelDetails.value = details
                 
                 // Fetch chapters from network and cache
-                novelRepository.fetchAndCacheChapters(novelUrl, sourceId)
+                val fetchedChapters = novelRepository.fetchAndCacheChapters(activeNovelUrl, activeSourceId)
+                if (this@NovelDetailViewModel.novelUrl != activeNovelUrl) return@launch
+                _canLoadMoreChapters.value = activeSourceId == "lightnovelpub" && fetchedChapters.isNotEmpty()
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    fun loadMoreChapters() {
+        if (_isLoadingMoreChapters.value || !_canLoadMoreChapters.value) return
+
+        val activeNovelUrl = novelUrl
+        val activeSourceId = sourceId
+        val pageToLoad = nextChapterPage
+        viewModelScope.launch {
+            _isLoadingMoreChapters.value = true
+            try {
+                val fetchedChapters = novelRepository.fetchAndCacheChapterPage(activeNovelUrl, activeSourceId, pageToLoad)
+                if (this@NovelDetailViewModel.novelUrl != activeNovelUrl) return@launch
+                if (fetchedChapters.isEmpty()) {
+                    _canLoadMoreChapters.value = false
+                } else {
+                    nextChapterPage += 1
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _canLoadMoreChapters.value = false
+            } finally {
+                _isLoadingMoreChapters.value = false
             }
         }
     }
@@ -130,6 +184,7 @@ class NovelDetailViewModel @Inject constructor(
         val chapterList = _chapters.value
         if (chapterList.isEmpty()) return
 
+        val currentNovelTitle = _novelDetails.value?.title ?: "Novel"
         val chaptersToDownload = chapterList
             .drop(startIndex)
             .filter { !it.isDownloaded }
@@ -139,10 +194,15 @@ class NovelDetailViewModel @Inject constructor(
             val data = Data.Builder()
                 .putString(ChapterDownloadWorker.KEY_CHAPTER_URL, chapter.url)
                 .putString(ChapterDownloadWorker.KEY_SOURCE_ID, sourceId)
+                .putString(ChapterDownloadWorker.KEY_NOVEL_URL, chapter.novelUrl)
+                .putString(ChapterDownloadWorker.KEY_NOVEL_TITLE, currentNovelTitle)
+                .putString(ChapterDownloadWorker.KEY_CHAPTER_TITLE, chapter.title)
                 .build()
                 
             OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
                 .setInputData(data)
+                .addTag(ChapterDownloadWorker.TAG_DOWNLOAD)
+                .addTag(ChapterDownloadWorker.tagForNovel(chapter.novelUrl))
                 .build()
         }
         

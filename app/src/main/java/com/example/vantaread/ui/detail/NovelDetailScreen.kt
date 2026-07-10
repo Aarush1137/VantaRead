@@ -46,6 +46,8 @@ fun NovelDetailScreen(
     val readChapterUrls by viewModel.readChapterUrls.collectAsState()
     val lastReadChapterUrl by viewModel.lastReadChapterUrl.collectAsState()
     val downloadMessage by viewModel.downloadMessage.collectAsState()
+    val isLoadingMoreChapters by viewModel.isLoadingMoreChapters.collectAsState()
+    val canLoadMoreChapters by viewModel.canLoadMoreChapters.collectAsState()
     val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
 
     LaunchedEffect(downloadMessage) {
@@ -235,6 +237,20 @@ fun NovelDetailScreen(
                         },
                         modifier = Modifier.clickable { onChapterClick(chapter.url, viewModel.sourceId, chapter.title) }, 
                     )
+                }
+
+                if (canLoadMoreChapters) {
+                    item {
+                        Button(
+                            onClick = { viewModel.loadMoreChapters() },
+                            enabled = !isLoadingMoreChapters,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp)
+                        ) {
+                            Text(if (isLoadingMoreChapters) "Loading..." else "Load more chapters")
+                        }
+                    }
                 }
             }
         }

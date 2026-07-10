@@ -5,6 +5,7 @@ import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
+import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -104,19 +105,29 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
         // LightNovelPub usually has a /chapters endpoint or lists them on the main page.
         // We'll try the chapters page if available.
         val doc = fetchDocument(novelUrl)
-        
-        val chapters = mutableListOf<Chapter>()
-        val elements = doc.select("a.chapter[href*=/chapter-], .ul-list-chapter a[href*=/chapter-], a[href*=/chapter-]")
-        
-        elements.forEachIndexed { index, element ->
-            val url = absoluteUrl(element.attr("href"))
-            val title = element.select(".chapter-title").text().ifEmpty { element.text() }.trim()
-            if (title.isNotEmpty()) {
-                chapters.add(Chapter(url, novelUrl, title, index))
-            }
+        parseChapterPage(doc, novelUrl, 0)
+    }
+
+    override suspend fun getChapterPage(novelUrl: String, page: Int): List<Chapter> = withContext(Dispatchers.IO) {
+        if (page <= 0) {
+            getChapterList(novelUrl)
+        } else {
+            val pageUrl = "${novelUrl.trimEnd('/')}/${page + 1}"
+            val doc = runCatching { fetchDocument(pageUrl) }
+                .getOrElse { WebViewScraper.getHtml(context, pageUrl) }
+            parseChapterPage(doc, novelUrl, page)
         }
-        
-        chapters
+    }
+
+    private fun parseChapterPage(doc: Document, novelUrl: String, page: Int): List<Chapter> {
+        return doc.select(".m-newest2 a[href*=/chapter], .ul-list-chapter a[href*=/chapter], a.chapter[href*=/chapter]")
+            .mapNotNull { element ->
+                val url = absoluteUrl(element.attr("href"))
+                val title = element.select(".chapter-title").text().ifEmpty { element.attr("title").ifEmpty { element.text() } }.trim()
+                if (title.isNotEmpty()) Chapter(url, novelUrl, title, 0) else null
+            }
+            .distinctBy { it.url }
+            .mapIndexed { index, chapter -> chapter.copy(index = page * 40 + index) }
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {

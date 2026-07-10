@@ -12,5 +12,6 @@ interface NovelSource {
     suspend fun searchNovels(query: String): List<Novel>
     suspend fun getNovelDetails(novelUrl: String): NovelDetails
     suspend fun getChapterList(novelUrl: String): List<Chapter>
+    suspend fun getChapterPage(novelUrl: String, page: Int): List<Chapter> = emptyList()
     suspend fun getChapterContent(chapterUrl: String): String
 }

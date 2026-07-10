@@ -15,5 +15,13 @@
 - Made Settings source selection update the active Library/Search/Suggestions source immediately.
 - Added a visible Downloads section on novel details with downloaded counts plus Next 5, Next 10, and All batch actions.
 - Added a dedicated Downloads tab that lists locally downloaded chapters, opens them in the reader, and lets you remove downloaded chapter content.
+- Added an In Progress section to the Downloads tab so queued/running chapter downloads are visible before they finish.
+- Added real-time WorkManager download status text in the app, including current chapter title and downloaded chapter counts when available.
+- Added Android download notifications with per-novel progress bars and downloaded/total chapter counts.
+- Added the Android 13+ notification permission request and a notification channel for chapter downloads.
 - Prevented failed/empty chapter downloads from being marked as downloaded.
+- Made the Settings theme option actually drive the app theme from the top-level activity.
+- Added selectable accent colors in Settings: Vanta Purple, Lavender, Mint Green, Sky Blue, and Rose Pink.
+- Added stale-load guards on the novel detail screen so changing novels cancels old detail/chapter collectors and prevents the previous novel's chapters from showing under a new novel.
+- Added LightNovelPub chapter pagination with a Load more chapters action so very large novels can fetch more chapters page-by-page instead of loading everything at once.
 - Replaced the stale instrumentation test that referenced the removed `MainScreen`.

@@ -136,10 +136,15 @@ class LibraryViewModel @Inject constructor(
                             val data = Data.Builder()
                                 .putString(ChapterDownloadWorker.KEY_CHAPTER_URL, chapter.url)
                                 .putString(ChapterDownloadWorker.KEY_SOURCE_ID, sourceId)
+                                .putString(ChapterDownloadWorker.KEY_NOVEL_URL, chapter.novelUrl)
+                                .putString(ChapterDownloadWorker.KEY_NOVEL_TITLE, details.title)
+                                .putString(ChapterDownloadWorker.KEY_CHAPTER_TITLE, chapter.title)
                                 .build()
 
                             OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
                                 .setInputData(data)
+                                .addTag(ChapterDownloadWorker.TAG_DOWNLOAD)
+                                .addTag(ChapterDownloadWorker.tagForNovel(chapter.novelUrl))
                                 .build()
                         }
                     workManager.enqueue(requests)

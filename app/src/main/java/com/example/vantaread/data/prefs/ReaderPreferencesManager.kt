@@ -2,6 +2,7 @@ package com.example.vantaread.data.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.vantaread.data.model.AppAccent
 import com.example.vantaread.data.model.ReaderFont
 import com.example.vantaread.data.model.ReaderSettings
 import com.example.vantaread.data.model.ReaderTheme
@@ -22,6 +23,13 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
 
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "system") ?: "system")
     val theme: StateFlow<String> = _theme.asStateFlow()
+
+    private val _accent = MutableStateFlow(
+        runCatching {
+            AppAccent.valueOf(prefs.getString("app_accent", AppAccent.VANTA_PURPLE.name) ?: AppAccent.VANTA_PURPLE.name)
+        }.getOrDefault(AppAccent.VANTA_PURPLE)
+    )
+    val accent: StateFlow<AppAccent> = _accent.asStateFlow()
 
     private val _defaultSource = MutableStateFlow(
         SourceCatalog.normalize(
@@ -51,6 +59,11 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
     fun setTheme(theme: String) {
         prefs.edit().putString("app_theme", theme).apply()
         _theme.value = theme
+    }
+
+    fun setAccent(accent: AppAccent) {
+        prefs.edit().putString("app_accent", accent.name).apply()
+        _accent.value = accent
     }
 
     fun setDefaultSource(sourceId: String) {

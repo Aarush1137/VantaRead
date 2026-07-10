@@ -2,6 +2,7 @@ package com.example.vantaread.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vantaread.data.model.AppAccent
 import com.example.vantaread.data.prefs.ReaderPreferencesManager
 import com.example.vantaread.data.prefs.SourcePreferencesManager
 import com.example.vantaread.data.repository.NovelRepository
@@ -22,6 +23,9 @@ class SettingsViewModel @Inject constructor(
 
     val currentTheme: StateFlow<String> = preferencesManager.theme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+
+    val currentAccent: StateFlow<AppAccent> = preferencesManager.accent
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppAccent.VANTA_PURPLE)
         
     val defaultSource: StateFlow<String> = preferencesManager.defaultSource
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SourceCatalog.DEFAULT_SOURCE_ID)
@@ -29,6 +33,12 @@ class SettingsViewModel @Inject constructor(
     fun setTheme(theme: String) {
         viewModelScope.launch {
             preferencesManager.setTheme(theme)
+        }
+    }
+
+    fun setAccent(accent: AppAccent) {
+        viewModelScope.launch {
+            preferencesManager.setAccent(accent)
         }
     }
 
