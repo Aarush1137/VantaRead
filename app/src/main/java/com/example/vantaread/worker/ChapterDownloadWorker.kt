@@ -67,7 +67,14 @@ class ChapterDownloadWorker @AssistedInject constructor(
                 content.startsWith("Error loading chapter content") ||
                 content.startsWith("Failed to")
             ) {
-                Log.e("DownloadWorker", "Downloaded content was empty or failed for $chapterUrl")
+                Log.e("DownloadWorker", "Downloaded content was empty or failed for $chapterUrl (Attempt: $runAttemptCount)")
+                
+                if (runAttemptCount >= 3) {
+                    publishWorkProgress(inputNovelTitle, inputChapterTitle, "Failed")
+                    notifyFailure(inputNovelUrl ?: chapterUrl, inputNovelTitle, inputChapterTitle)
+                    return@withContext Result.failure()
+                }
+                
                 notifyProgress(
                     novelUrl = novelUrl,
                     novelTitle = novelTitle,
@@ -93,7 +100,14 @@ class ChapterDownloadWorker @AssistedInject constructor(
             Log.d("DownloadWorker", "Successfully downloaded $chapterUrl")
             Result.success()
         } catch (e: Exception) {
-            Log.e("DownloadWorker", "Failed to download $chapterUrl", e)
+            Log.e("DownloadWorker", "Failed to download $chapterUrl (Attempt: $runAttemptCount)", e)
+            
+            if (runAttemptCount >= 3) {
+                publishWorkProgress(inputNovelTitle, inputChapterTitle, "Failed")
+                notifyFailure(inputNovelUrl ?: chapterUrl, inputNovelTitle, inputChapterTitle)
+                return@withContext Result.failure()
+            }
+            
             publishWorkProgress(inputNovelTitle, inputChapterTitle, "Retrying")
             notifyFailure(inputNovelUrl ?: chapterUrl, inputNovelTitle, inputChapterTitle)
             Result.retry()

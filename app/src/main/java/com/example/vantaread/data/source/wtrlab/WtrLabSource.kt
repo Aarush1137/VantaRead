@@ -20,12 +20,8 @@ class WtrLabSource @Inject constructor(
     private val baseUrl = "https://wtr-lab.com"
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(userAgent)
-            .referrer(baseUrl)
-            .timeout(30000)
-            .get()
+    private suspend fun fetchDocument(url: String): Document {
+        return com.example.vantaread.data.source.util.WebViewScraper.getHtml(context, url)
     }
 
     private fun absoluteUrl(url: String): String {

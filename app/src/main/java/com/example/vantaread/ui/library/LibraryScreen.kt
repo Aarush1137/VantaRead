@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.LaunchedEffect
 import com.example.vantaread.data.source.SourceCatalog
 
@@ -37,6 +39,8 @@ import com.example.vantaread.data.source.SourceCatalog
 @Composable
 fun LibraryScreen(
     onNavigateToDiscover: () -> Unit,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onNovelClick: (String, String) -> Unit, // novelUrl, sourceId
     onContinueReading: (String, String, String, String) -> Unit, // chapterUrl, sourceId, novelUrl, chapterTitle
     viewModel: LibraryViewModel = hiltViewModel()
@@ -77,6 +81,10 @@ fun LibraryScreen(
                     val currentSort by viewModel.currentSortOption.collectAsState()
                     val activeSourceId by viewModel.activeSourceId.collectAsState()
                     
+                    IconButton(onClick = onNavigateToHistory) {
+                        Icon(Icons.Default.History, contentDescription = "History")
+                    }
+
                     IconButton(onClick = { showSourceMenu = true }) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
@@ -135,6 +143,10 @@ fun LibraryScreen(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add via URL"
                         )
+                    }
+
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 }
             )

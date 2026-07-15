@@ -87,28 +87,6 @@ fun MainNavigation() {
                         icon = { Icon(Icons.Filled.DownloadDone, contentDescription = "Downloads") },
                         label = { Text("Downloads") }
                     )
-                    NavigationBarItem(
-                        selected = currentRoute is History,
-                        onClick = { 
-                            if (currentRoute !is History) {
-                                backStack.clear()
-                                backStack.add(History)
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.History, contentDescription = "History") },
-                        label = { Text("History") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute is Settings,
-                        onClick = { 
-                            if (currentRoute !is Settings) {
-                                backStack.clear()
-                                backStack.add(Settings)
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") }
-                    )
                 }
             }
         }

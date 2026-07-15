@@ -80,6 +80,10 @@ fun ReaderScreen(
             ?.filter { it.isNotEmpty() } ?: emptyList()
     }
 
+    val parsedParagraphs = remember(paragraphs) {
+        paragraphs.map { HtmlCompat.fromHtml(it, HtmlCompat.FROM_HTML_MODE_COMPACT) }
+    }
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     
@@ -214,7 +218,7 @@ fun ReaderScreen(
                         vertical = 80.dp // Padding to prevent HUD from overlapping text at boundaries
                     )
                 ) {
-                    items(paragraphs) { paragraph ->
+                    items(parsedParagraphs) { parsedParagraph ->
                         AndroidView(
                             factory = { context ->
                                 TextView(context).apply {
@@ -230,7 +234,7 @@ fun ReaderScreen(
                                     "Right" -> android.view.View.TEXT_ALIGNMENT_VIEW_END
                                     else -> android.view.View.TEXT_ALIGNMENT_VIEW_START
                                 }
-                                textView.text = HtmlCompat.fromHtml(paragraph, HtmlCompat.FROM_HTML_MODE_COMPACT)
+                                textView.text = parsedParagraph
                             },
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
