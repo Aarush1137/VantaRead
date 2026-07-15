@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -877,7 +878,7 @@ private fun VoicePickerSheet(
                             }
                             if (voice.requiresNetwork) {
                                 Icon(
-                                    imageVector = Icons.Default.Speed, // Using Speed as a placeholder for "online"
+                                    imageVector = Icons.Default.Cloud,
                                     contentDescription = "Online only",
                                     tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)

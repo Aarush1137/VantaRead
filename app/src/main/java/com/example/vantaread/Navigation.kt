@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -56,7 +57,15 @@ import com.example.vantaread.ui.suggestions.SuggestionsScreen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavigation() {
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = remember(context) {
+        var c = context
+        while (c is android.content.ContextWrapper) {
+            if (c is Activity) break
+            c = c.baseContext
+        }
+        c as? Activity
+    }
     val authViewModel: AuthViewModel = hiltViewModel()
     val currentUser by authViewModel.currentUser.collectAsState()
     var continuedAsGuest by rememberSaveable { mutableStateOf(false) }

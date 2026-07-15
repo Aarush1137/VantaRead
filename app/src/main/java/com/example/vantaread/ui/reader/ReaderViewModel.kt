@@ -27,14 +27,14 @@ data class TtsVoiceOption(
     val name: String,
     val label: String,
     val localeTag: String,
-    val requiresNetwork: Boolean
+    val requiresNetwork: Boolean,
 )
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val novelRepository: NovelRepository,
-    private val preferencesManager: ReaderPreferencesManager
+    private val preferencesManager: ReaderPreferencesManager,
 ) : ViewModel(), TextToSpeech.OnInitListener {
 
     var chapterUrl: String = ""
@@ -50,7 +50,7 @@ class ReaderViewModel @Inject constructor(
     private val _chapterTitle = MutableStateFlow("")
     val chapterTitle: StateFlow<String> = _chapterTitle.asStateFlow()
 
-    private val _isAutoScrolling = MutableStateFlow(false)
+    private val _isAutoScrolling = MutableStateFlow(value = false)
     val isAutoScrolling: StateFlow<Boolean> = _isAutoScrolling.asStateFlow()
 
     private val _autoScrollSpeed = MutableStateFlow(1.0f)
@@ -102,7 +102,7 @@ class ReaderViewModel @Inject constructor(
 
                 override fun onDone(utteranceId: String?) {
                     utteranceId?.toIntOrNull()?.let { index ->
-                        if (index == ttsParagraphs.size - 1) {
+                        if (index == (ttsParagraphs.size - 1)) {
                             _isTtsPlaying.value = false
                             _ttsHighlightIndex.value = -1
                         } else if (_isTtsPlaying.value) {
@@ -111,7 +111,14 @@ class ReaderViewModel @Inject constructor(
                     }
                 }
 
-                override fun onError(utteranceId: String?) {}
+                @Deprecated("Use onError(String?, Int)")
+                override fun onError(utteranceId: String?) {
+                    android.util.Log.e("ReaderViewModel", "TTS error on $utteranceId")
+                }
+
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    android.util.Log.e("ReaderViewModel", "TTS error on $utteranceId, code: $errorCode")
+                }
             })
         }
     }
@@ -144,8 +151,7 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // Restore scroll position
-                val historyEntry = novelRepository.getHistoryEntry(chapterUrl)
-                if (historyEntry != null) {
+                novelRepository.getHistoryEntry(chapterUrl)?.let { historyEntry ->
                     _initialScrollIndex.value = historyEntry.scrollPosition
                 }
 
@@ -157,9 +163,7 @@ class ReaderViewModel @Inject constructor(
                 val novel = novelRepository.getNovelFromDb(novelUrl)
                 val dbChapters = novelRepository.getChaptersListForNovelDb(novelUrl)
                 val chapter = dbChapters.find { it.url == chapterUrl }
-                if (chapter != null) {
-                    _chapterTitle.value = chapter.title
-                }
+                chapter?.let { _chapterTitle.value = it.title }
 
                 // Record history entry
                 novelRepository.recordChapterRead(
@@ -282,7 +286,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     private fun speakParagraph(index: Int) {
-        if (index in ttsParagraphs.indices && _isTtsPlaying.value) {
+        if ((index in ttsParagraphs.indices) && _isTtsPlaying.value) {
             val text = ttsParagraphs[index]
             if (text.isNotBlank()) {
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, index.toString())
@@ -337,7 +341,7 @@ class ReaderViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        tts?.stop()
+        stopTts()
         tts?.shutdown()
     }
 }

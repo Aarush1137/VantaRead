@@ -26,13 +26,13 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val cloudSyncRepository: CloudSyncRepository
+    private val cloudSyncRepository: CloudSyncRepository,
 ) : ViewModel() {
 
     val currentUser = authRepository.currentUser
     val isFirebaseConfigured = authRepository.isConfigured
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(value = false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
@@ -84,7 +84,7 @@ class AuthViewModel @Inject constructor(
                 } else {
                     Log.d("AuthViewModel", "Sign in successful")
                 }
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Sign in timed out after ${AUTH_TIMEOUT_MS}ms")
                 _error.value = "Sign in timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
             } catch (e: Exception) {
@@ -111,7 +111,7 @@ class AuthViewModel @Inject constructor(
                 } else {
                     Log.d("AuthViewModel", "Sign up successful")
                 }
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Sign up timed out after ${AUTH_TIMEOUT_MS}ms")
                 _error.value = "Sign up timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
             } catch (e: Exception) {
@@ -152,7 +152,7 @@ class AuthViewModel @Inject constructor(
             } catch (e: ApiException) {
                 Log.e("AuthViewModel", "Google sign in ApiException", e)
                 _error.value = e.message ?: "Google sign-in failed"
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Google sign in timed out after ${AUTH_TIMEOUT_MS}ms")
                 _error.value = "Google sign-in timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
             } catch (e: Exception) {
@@ -264,7 +264,7 @@ class AuthViewModel @Inject constructor(
 
     fun verifyCode(code: String) {
         val vid = verificationId
-        if (vid == null || code.isBlank()) {
+        if ((vid == null) || code.isBlank()) {
             _error.value = "Request a verification code first."
             return
         }
@@ -301,7 +301,7 @@ class AuthViewModel @Inject constructor(
                     Log.w("AuthViewModel", "Password reset failed: ${result.exceptionOrNull()?.message}")
                     result.exceptionOrNull()?.message ?: "Could not request a password reset."
                 }
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Password reset timed out")
                 _error.value = "Password reset request timed out. Please check your connection and try again."
             } catch (e: Exception) {
@@ -330,7 +330,7 @@ class AuthViewModel @Inject constructor(
                 }
                 // Note: AuthRepository listens to auth state changes, so it will update currentUser automatically
                 _isCodeSent.value = false
-            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Phone sign in timed out")
                 _error.value = "Phone sign-in timed out. Please check your connection and try again."
             } catch (e: Exception) {
