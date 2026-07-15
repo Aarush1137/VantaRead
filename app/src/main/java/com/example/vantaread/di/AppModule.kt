@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.vantaread.data.db.AppDatabase
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.ReadingHistoryDao
+import com.example.vantaread.data.repository.FirebaseServices
 import com.example.vantaread.data.repository.NovelRepository
 import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.lightnovelpub.LightNovelPubSource
@@ -12,11 +13,6 @@ import com.example.vantaread.data.source.novelfull.NovelFullSource
 import com.example.vantaread.data.source.royalroad.RoyalRoadSource
 import com.example.vantaread.data.source.freewebnovel.FreeWebNovelSource
 import com.example.vantaread.data.source.scribblehub.ScribbleHubSource
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,11 +26,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseAuth(): FirebaseAuth = Firebase.auth
-
-    @Provides
-    @Singleton
-    fun provideFirebaseFirestore(): FirebaseFirestore = Firebase.firestore
+    fun provideFirebaseServices(@ApplicationContext context: Context): FirebaseServices =
+        FirebaseServices.create(context)
 
     @Provides
     @Singleton

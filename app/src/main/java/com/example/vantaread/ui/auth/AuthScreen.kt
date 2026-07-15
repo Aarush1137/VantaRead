@@ -18,9 +18,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import android.app.Activity
-import com.example.vantaread.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -47,7 +45,15 @@ fun AuthScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     
     val context = LocalContext.current
-    val googleWebClientId = stringResource(R.string.google_web_client_id)
+    // The Google Services Gradle plugin generates this from the local, git-ignored
+    // google-services.json. getIdentifier keeps no-Firebase builds usable in guest mode.
+    val googleWebClientId = remember(context) {
+        context.resources
+            .getIdentifier("default_web_client_id", "string", context.packageName)
+            .takeIf { it != 0 }
+            ?.let { context.getString(it) }
+            ?.takeIf { it.isNotBlank() }
+    }
     val googleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -101,11 +107,27 @@ fun AuthScreen(
                     if (usePhoneAuth) "Phone Sign In" else if (isSignUp) "Create Account" else "Welcome Back",
                     style = MaterialTheme.typography.headlineMedium
                 )
-                Spacer(modifier = Modifier.height(32.dp))
+                if (!viewModel.isFirebaseConfigured) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Text(
+                            text = "Account features are not configured in this build. Add the local app/google-services.json file to enable them; it is ignored by Git.",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+                if (viewModel.isFirebaseConfigured) {
+                    Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = {
-                        if (googleWebClientId == "YOUR_WEB_CLIENT_ID") {
-                            viewModel.showMessage("Google sign-in needs google_web_client_id in app/src/main/res/values/firebase_auth.xml.")
+                        if (!viewModel.isFirebaseConfigured) {
+                            viewModel.showMessage("Google sign-in requires a local app/google-services.json. This file stays out of Git.")
+                        } else if (googleWebClientId == null) {
+                            viewModel.showMessage("The Firebase config has no web OAuth client. Enable Google sign-in in Firebase, then download a fresh google-services.json.")
                         } else {
                             val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                                 .requestIdToken(googleWebClientId)
@@ -116,7 +138,7 @@ fun AuthScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
+                    enabled = !isLoading && viewModel.isFirebaseConfigured
                 ) {
                     Icon(Icons.Filled.AccountCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -134,11 +156,6 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        
-                        if (error != null) {
-                            Text(error!!, color = MaterialTheme.colorScheme.error)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
                         
                         Button(
                             onClick = { viewModel.verifyCode(verificationCode) },
@@ -160,11 +177,6 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        
-                        if (error != null) {
-                            Text(error!!, color = MaterialTheme.colorScheme.error)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
                         
                         Button(
                             onClick = { 
@@ -209,17 +221,12 @@ fun AuthScreen(
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     
-                    if (error != null) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                    
                     Button(
                         onClick = {
-                            if (isSignUp) viewModel.signUp(email, password) else viewModel.signIn(email, password)
+                            viewModel.submitEmailPassword(email, password, isSignUp)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
+                        enabled = !isLoading && viewModel.isFirebaseConfigured && email.isNotBlank() && password.isNotBlank()
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -229,16 +236,39 @@ fun AuthScreen(
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    if (!isSignUp) {
+                        TextButton(
+                            onClick = { viewModel.resetPassword(email) },
+                            enabled = !isLoading && viewModel.isFirebaseConfigured
+                        ) {
+                            Text("Forgot password?")
+                        }
+                    }
                     
-                    TextButton(onClick = { isSignUp = !isSignUp }) {
+                    TextButton(onClick = {
+                        isSignUp = !isSignUp
+                        viewModel.clearMessage()
+                    }) {
                         Text(if (isSignUp) "Already have an account? Sign In" else "Don't have an account? Sign Up")
                     }
+                }
+
+                error?.let { message ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(message, color = MaterialTheme.colorScheme.error)
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                TextButton(onClick = { usePhoneAuth = !usePhoneAuth }) {
+                TextButton(onClick = {
+                    usePhoneAuth = !usePhoneAuth
+                    verificationCode = ""
+                    viewModel.cancelPhoneVerification()
+                    viewModel.clearMessage()
+                }) {
                     Text(if (usePhoneAuth) "Use Email/Password instead" else "Sign in with Phone Number")
+                }
                 }
 
                 TextButton(onClick = onContinueAsGuest) {

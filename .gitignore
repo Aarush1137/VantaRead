@@ -18,4 +18,6 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+.codex/
+.artifacts/
+.agents/

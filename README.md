@@ -23,7 +23,8 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 * **Reading Progress:** Automatically saves your scroll position.
 * **Auto-Scroll:** Kick back and relax! Toggle auto-scrolling with an adjustable speed slider.
 * **Smart Navigation:** Tap zones (left/right) to navigate chapters, overlay HUDs, and seamless prev/next chapter transitions.
-* **Read Aloud:** Built-in text-to-speech controls highlight and follow the current paragraph.
+* **Read Aloud:** Built-in text-to-speech controls highlight and follow the current paragraph with customizable voices and speed.
+* **Reader Bookmarks:** (New) Save specific paragraphs as bookmarks to quickly jump back to important moments in a chapter.
 * **Quick Chapter Advance:** Pull upward at the end of a chapter to open the next one.
 
 ### Account & Cloud Sync
@@ -96,11 +97,11 @@ Current Implemented Sources:
 
 ## Firebase setup
 
-The Android app expects a local Firebase config at `app/google-services.json`. This file is intentionally ignored because it contains a Firebase/Google API key. Use `app/google-services.example.json` as the shape reference, then download the real Android config from Firebase Console for package `com.example.vantaread`.
+The Android app expects a local Firebase config at `app/google-services.json`. It is intentionally ignored, so account features work in your local builds without putting your Firebase project configuration in Git. Do not copy `google-services.example.json`; download the real config from Firebase Console for the exact package `com.example.vantaread`.
 
 Do not commit `app/google-services.json`. If a key is accidentally pushed, rotate or revoke it in Google Cloud/Firebase before closing the GitHub secret alert.
 
-For Google sign-in, set `google_web_client_id` in `app/src/main/res/values/firebase_auth.xml` to your Firebase Web OAuth client ID. The committed placeholder keeps local auth wiring explicit without checking private config into source control.
+For Google sign-in, enable Google as a Firebase Authentication provider, then download `google-services.json` again and place it at `app/google-services.json`. The Google Services Gradle plugin reads its Web OAuth client ID into the app as `default_web_client_id`; no client ID needs to be copied into source or committed. Add your debug and release SHA-1/SHA-256 fingerprints to the Firebase Android app before testing on a device.
 
 Before releasing a build, enable the required sign-in providers in the Firebase console:
 

@@ -1,0 +1,22 @@
+# Task List - Auth Fixes, TTS Voices, and Reader Bookmarks
+
+- [ ] Git & Documentation
+    - [ ] Update README with roadmap highlights
+    - [ ] Commit current stable state
+- [ ] Auth Fixes
+    - [ ] Update `AuthRepository` to rethrow `CancellationException`
+    - [ ] Improve `AuthViewModel` error reporting and reset `isLoading` in `finally`
+    - [ ] Add logging to auth flows
+- [ ] TTS Enhancements
+    - [ ] Add voice filtering/categorization in `ReaderViewModel`
+    - [ ] Improve voice selection UI in `ReaderScreen`
+- [ ] Reader Bookmarks (New Feature)
+    - [ ] Create `BookmarkEntity` and `BookmarkDao`
+    - [ ] Update `AppDatabase` with the new table
+    - [ ] Update `NovelRepository` with bookmark methods
+    - [ ] Implement bookmark logic in `ReaderViewModel`
+    - [ ] Add bookmark UI to `ReaderScreen`
+- [ ] Verification
+    - [ ] Test Auth flows (Google, Email, Phone)
+    - [ ] Test TTS voice switching
+    - [ ] Test Reader Bookmarks (Add, Navigate, Delete)

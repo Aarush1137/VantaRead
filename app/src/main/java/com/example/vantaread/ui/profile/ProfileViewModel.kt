@@ -21,6 +21,8 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val user: FirebaseUser? = null,
+    val isAccountConfigured: Boolean = false,
+    val isCloudSyncConfigured: Boolean = false,
     val bookmarkCount: Int = 0,
     val novelsStarted: Int = 0,
     val chaptersRead: Int = 0,
@@ -31,6 +33,7 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val cloudSyncRepository: CloudSyncRepository,
+    firebaseServices: com.example.vantaread.data.repository.FirebaseServices,
     novelRepository: NovelRepository
 ) : ViewModel() {
 
@@ -42,6 +45,8 @@ class ProfileViewModel @Inject constructor(
     ) { user: FirebaseUser?, bookmarks: List<NovelEntity>, history: List<ReadingHistoryEntity>, downloads: List<DownloadedChapter> ->
         ProfileUiState(
             user = user,
+            isAccountConfigured = authRepository.isConfigured,
+            isCloudSyncConfigured = firebaseServices.isCloudSyncConfigured,
             bookmarkCount = bookmarks.size,
             novelsStarted = history.distinctBy { it.novelUrl }.size,
             chaptersRead = history.size,

@@ -10,7 +10,10 @@ data class ReaderSettings(
     val horizontalMarginDp: Int = 16,
     val lineHeight: Float = 1.5f,
     val textAlignment: String = "Left",
-    val accentColorHex: String = "#8A2BE2" // Vanta Purple Default
+    val accentColorHex: String = "#8A2BE2", // Vanta Purple Default
+    val ttsVoiceName: String? = null,
+    val ttsLocaleTag: String = "en-US",
+    val ttsSpeechRate: Float = 1.0f
 )
 
 enum class ReaderTheme(val backgroundColor: Color, val textColor: Color) {

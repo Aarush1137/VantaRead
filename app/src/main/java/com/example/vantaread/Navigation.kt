@@ -1,20 +1,27 @@
 package com.example.vantaread
 
+import android.app.Activity
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -27,6 +34,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -44,11 +53,14 @@ import com.example.vantaread.ui.settings.SettingsScreen
 import com.example.vantaread.ui.stats.StatsScreen
 import com.example.vantaread.ui.suggestions.SuggestionsScreen
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavigation() {
+    val activity = LocalContext.current as? Activity
     val authViewModel: AuthViewModel = hiltViewModel()
     val currentUser by authViewModel.currentUser.collectAsState()
     var continuedAsGuest by rememberSaveable { mutableStateOf(false) }
+    var showMoreSheet by rememberSaveable { mutableStateOf(false) }
     val backStack = rememberNavBackStack(if (currentUser == null) Auth else Library)
     val currentRoute = backStack.lastOrNull()
 
@@ -64,6 +76,10 @@ fun MainNavigation() {
         currentRoute is Suggestions ||
         currentRoute is Downloads ||
         currentRoute is History ||
+        currentRoute is Stats ||
+        currentRoute is Profile ||
+        currentRoute is Settings
+    val isMoreDestination = currentRoute is History ||
         currentRoute is Stats ||
         currentRoute is Profile ||
         currentRoute is Settings
@@ -117,26 +133,12 @@ fun MainNavigation() {
                         label = { Text("Downloads") }
                     )
                     NavigationBarItem(
-                        selected = currentRoute is Stats,
+                        selected = showMoreSheet || isMoreDestination,
                         onClick = {
-                            if (currentRoute !is Stats) {
-                                backStack.clear()
-                                backStack.add(Stats)
-                            }
+                            showMoreSheet = true
                         },
-                        icon = { Icon(Icons.Filled.History, contentDescription = "Stats") },
-                        label = { Text("Stats") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute is Profile,
-                        onClick = {
-                            if (currentRoute !is Profile) {
-                                backStack.clear()
-                                backStack.add(Profile)
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                        label = { Text("Profile") }
+                        icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = "More") },
+                        label = { Text("More") }
                     )
                 }
             }
@@ -144,7 +146,13 @@ fun MainNavigation() {
     ) { innerPadding ->
         NavDisplay(
             backStack = backStack,
-            onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) else null },
+            onBack = {
+                if (backStack.size > 1) {
+                    backStack.removeAt(backStack.lastIndex)
+                } else {
+                    activity?.finish()
+                }
+            },
             modifier = Modifier.padding(innerPadding),
             transitionSpec = {
                 (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it } + fadeOut())
@@ -251,10 +259,69 @@ fun MainNavigation() {
                             backStack.clear()
                             backStack.add(Stats)
                         },
-                        onNavigateToSettings = { backStack.add(Settings) }
+                        onNavigateToSettings = { backStack.add(Settings) },
+                        onSignedOut = {
+                            continuedAsGuest = false
+                            backStack.clear()
+                            backStack.add(Auth)
+                        }
                     )
                 }
             },
         )
+    }
+
+    if (showMoreSheet) {
+        ModalBottomSheet(onDismissRequest = { showMoreSheet = false }) {
+            Text(
+                text = "More",
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            ListItem(
+                headlineContent = { Text("Reading history") },
+                leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    showMoreSheet = false
+                    if (currentRoute !is History) {
+                        backStack.clear()
+                        backStack.add(History)
+                    }
+                }
+            )
+            ListItem(
+                headlineContent = { Text("Reading statistics") },
+                leadingContent = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    showMoreSheet = false
+                    if (currentRoute !is Stats) {
+                        backStack.clear()
+                        backStack.add(Stats)
+                    }
+                }
+            )
+            ListItem(
+                headlineContent = { Text("Profile & cloud sync") },
+                leadingContent = { Icon(Icons.Filled.Person, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    showMoreSheet = false
+                    if (currentRoute !is Profile) {
+                        backStack.clear()
+                        backStack.add(Profile)
+                    }
+                }
+            )
+            ListItem(
+                headlineContent = { Text("Settings") },
+                leadingContent = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    showMoreSheet = false
+                    if (currentRoute !is Settings) {
+                        backStack.clear()
+                        backStack.add(Settings)
+                    }
+                }
+            )
+        }
     }
 }

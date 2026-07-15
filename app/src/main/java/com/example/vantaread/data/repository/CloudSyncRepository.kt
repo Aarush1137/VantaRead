@@ -2,8 +2,6 @@ package com.example.vantaread.data.repository
 
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.NovelEntity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,12 +10,13 @@ import javax.inject.Singleton
 
 @Singleton
 class CloudSyncRepository @Inject constructor(
-    private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
+    private val firebaseServices: FirebaseServices,
     private val novelDao: NovelDao
 ) {
 
     suspend fun syncBookmarksToCloud() {
+        val auth = firebaseServices.requireAuth()
+        val firestore = firebaseServices.requireFirestore()
         val user = requireNotNull(auth.currentUser) { "Sign in to sync bookmarks." }
         val bookmarksRef = firestore.collection("users").document(user.uid).collection("bookmarks")
         val localBookmarks = novelDao.getBookmarkedNovelsSynchronous()
@@ -46,6 +45,8 @@ class CloudSyncRepository @Inject constructor(
     }
 
     suspend fun syncBookmarksFromCloud() = withContext(Dispatchers.IO) {
+        val auth = firebaseServices.requireAuth()
+        val firestore = firebaseServices.requireFirestore()
         val user = auth.currentUser ?: return@withContext
         val userRef = firestore.collection("users").document(user.uid)
         val bookmarksRef = userRef.collection("bookmarks")
@@ -89,6 +90,14 @@ class CloudSyncRepository @Inject constructor(
 
     private fun String.stableCloudId(): String =
         java.util.UUID.nameUUIDFromBytes(toByteArray(Charsets.UTF_8)).toString()
+
+    private fun FirebaseServices.requireAuth() = requireNotNull(auth) {
+        "Cloud sync is unavailable because Firebase is not configured in this build."
+    }
+
+    private fun FirebaseServices.requireFirestore() = requireNotNull(firestore) {
+        "Cloud sync is unavailable because Firebase is not configured in this build."
+    }
 
     private sealed interface CloudWrite {
         data class Set(val reference: com.google.firebase.firestore.DocumentReference, val data: Map<String, Any?>) : CloudWrite

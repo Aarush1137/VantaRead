@@ -198,15 +198,26 @@ fun SettingsScreen(
 
             SettingsSection(title = "Account") {
                 Text(
-                    text = currentUser?.email ?: currentUser?.phoneNumber ?: "Guest mode",
+                    text = when {
+                        !viewModel.isFirebaseConfigured -> "Account features are not configured in this build"
+                        currentUser != null -> currentUser?.email ?: currentUser?.phoneNumber ?: "Signed in"
+                        else -> "Guest mode"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Button(
                     onClick = if (currentUser == null) onNavigateToAuth else onNavigateToProfile,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = viewModel.isFirebaseConfigured || currentUser != null
                 ) {
-                    Text(if (currentUser == null) "Sign in or create account" else "Open profile & cloud sync")
+                    Text(
+                        when {
+                            !viewModel.isFirebaseConfigured -> "Firebase setup required"
+                            currentUser == null -> "Sign in or create account"
+                            else -> "Open profile & cloud sync"
+                        }
+                    )
                 }
             }
         }

@@ -18,8 +18,16 @@ import javax.inject.Inject
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
+
+data class TtsVoiceOption(
+    val name: String,
+    val label: String,
+    val localeTag: String,
+    val requiresNetwork: Boolean
+)
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
@@ -67,6 +75,9 @@ class ReaderViewModel @Inject constructor(
     private val _ttsHighlightIndex = MutableStateFlow(-1)
     val ttsHighlightIndex: StateFlow<Int> = _ttsHighlightIndex.asStateFlow()
 
+    private val _ttsVoices = MutableStateFlow<List<TtsVoiceOption>>(emptyList())
+    val ttsVoices: StateFlow<List<TtsVoiceOption>> = _ttsVoices.asStateFlow()
+
     private var ttsParagraphs = listOf<String>()
 
     init {
@@ -75,7 +86,8 @@ class ReaderViewModel @Inject constructor(
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts?.language = Locale.US
+            refreshTtsVoices()
+            applyTtsSettings(settings.value)
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
                     utteranceId?.toIntOrNull()?.let { index ->
@@ -200,11 +212,26 @@ class ReaderViewModel @Inject constructor(
 
     fun updateSettings(newSettings: ReaderSettings) {
         preferencesManager.updateSettings(newSettings)
+        applyTtsSettings(newSettings)
+    }
+
+    fun selectTtsVoice(voice: TtsVoiceOption) {
+        updateSettings(
+            settings.value.copy(
+                ttsVoiceName = voice.name,
+                ttsLocaleTag = voice.localeTag
+            )
+        )
+    }
+
+    fun setTtsSpeechRate(rate: Float) {
+        updateSettings(settings.value.copy(ttsSpeechRate = rate.coerceIn(0.5f, 2.0f)))
     }
 
     fun startTts(paragraphs: List<String>, startIndex: Int = 0) {
         if (paragraphs.isEmpty()) return
         ttsParagraphs = paragraphs.map { androidx.core.text.HtmlCompat.fromHtml(it, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT).toString() }
+        applyTtsSettings(settings.value)
         _isTtsPlaying.value = true
         speakParagraph(startIndex)
     }
@@ -230,6 +257,44 @@ class ReaderViewModel @Inject constructor(
                 speakParagraph(index + 1)
             }
         }
+    }
+
+    private fun refreshTtsVoices() {
+        val voices = tts?.voices.orEmpty()
+            .sortedWith(compareBy<Voice> { it.locale.displayLanguage }.thenBy { it.name })
+            .map { voice ->
+                TtsVoiceOption(
+                    name = voice.name,
+                    label = buildString {
+                        append(voice.locale.displayName.ifBlank { voice.locale.toLanguageTag() })
+                        if (voice.isNetworkConnectionRequired) append(" - online")
+                    },
+                    localeTag = voice.locale.toLanguageTag(),
+                    requiresNetwork = voice.isNetworkConnectionRequired
+                )
+            }
+
+        _ttsVoices.value = voices.ifEmpty {
+            listOf(
+                TtsVoiceOption(
+                    name = "default",
+                    label = "Default English",
+                    localeTag = Locale.US.toLanguageTag(),
+                    requiresNetwork = false
+                )
+            )
+        }
+    }
+
+    private fun applyTtsSettings(readerSettings: ReaderSettings) {
+        val engine = tts ?: return
+        val voice = engine.voices?.firstOrNull { it.name == readerSettings.ttsVoiceName }
+        if (voice != null) {
+            engine.voice = voice
+        } else {
+            engine.language = Locale.forLanguageTag(readerSettings.ttsLocaleTag)
+        }
+        engine.setSpeechRate(readerSettings.ttsSpeechRate)
     }
 
     override fun onCleared() {

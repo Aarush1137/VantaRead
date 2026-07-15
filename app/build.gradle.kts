@@ -9,7 +9,7 @@ plugins {
 if (layout.projectDirectory.file("google-services.json").asFile.exists()) {
   apply(plugin = "com.google.gms.google-services")
 } else {
-  logger.warn("Firebase config app/google-services.json is missing. Copy app/google-services.example.json and replace placeholders for local Firebase builds.")
+  logger.warn("Firebase config app/google-services.json is missing. Guest mode will work, but account features are disabled.")
 }
 
 android {
@@ -112,7 +112,7 @@ dependencies {
 
   // Firebase
   implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-  implementation("com.google.firebase:firebase-auth-ktx")
-  implementation("com.google.firebase:firebase-firestore-ktx")
+  implementation("com.google.firebase:firebase-auth")
+  implementation("com.google.firebase:firebase-firestore")
   implementation(libs.play.services.auth)
 }

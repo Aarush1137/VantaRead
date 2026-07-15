@@ -43,6 +43,7 @@ fun ProfileScreen(
     onNavigateToAuth: () -> Unit,
     onNavigateToStats: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onSignedOut: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -95,7 +96,12 @@ fun ProfileScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (user == null) "Sign in to sync bookmarks across devices." else "Cloud sync is available.",
+                            text = when {
+                                !uiState.isAccountConfigured -> "Account services are not configured in this build."
+                                user == null -> "Sign in to sync bookmarks across devices."
+                                uiState.isCloudSyncConfigured -> "Cloud sync is ready."
+                                else -> "Signed in, but cloud sync is unavailable."
+                            },
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -114,22 +120,42 @@ fun ProfileScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Account", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    if (user == null) {
+                    if (!uiState.isAccountConfigured) {
+                        Text(
+                            "Add the local app/google-services.json file to enable sign-in and cloud sync. It is ignored by Git.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (user == null) {
                         Button(onClick = onNavigateToAuth, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Filled.Login, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Sign in or create account")
                         }
                     } else {
-                        Button(onClick = viewModel::syncBookmarks, modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = viewModel::syncBookmarks,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = uiState.isCloudSyncConfigured
+                        ) {
                             Icon(Icons.Filled.CloudSync, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Sync bookmarks")
                         }
-                        OutlinedButton(onClick = viewModel::restoreBookmarks, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = viewModel::restoreBookmarks,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = uiState.isCloudSyncConfigured
+                        ) {
                             Text("Restore from cloud")
                         }
-                        OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.signOut()
+                                onSignedOut()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text("Sign out")
                         }
                     }

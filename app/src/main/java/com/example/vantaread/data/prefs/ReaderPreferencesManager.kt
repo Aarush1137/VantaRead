@@ -45,6 +45,9 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
         val horizontalMargin = prefs.getInt("margin", 16)
         val lineHeight = prefs.getFloat("line_height", 1.5f)
         val textAlignment = prefs.getString("text_alignment", "Left") ?: "Left"
+        val ttsVoiceName = prefs.getString("tts_voice_name", null)
+        val ttsLocaleTag = prefs.getString("tts_locale_tag", "en-US") ?: "en-US"
+        val ttsSpeechRate = prefs.getFloat("tts_speech_rate", 1.0f)
 
         return ReaderSettings(
             themeMode = runCatching { ReaderTheme.valueOf(themeName) }.getOrDefault(ReaderTheme.VANTA_BLACK),
@@ -52,7 +55,10 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
             fontType = runCatching { ReaderFont.valueOf(fontName) }.getOrDefault(ReaderFont.SERIF),
             horizontalMarginDp = horizontalMargin,
             lineHeight = lineHeight,
-            textAlignment = textAlignment
+            textAlignment = textAlignment,
+            ttsVoiceName = ttsVoiceName,
+            ttsLocaleTag = ttsLocaleTag,
+            ttsSpeechRate = ttsSpeechRate
         )
     }
 
@@ -88,6 +94,9 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
             putInt("margin", newSettings.horizontalMarginDp)
             putFloat("line_height", newSettings.lineHeight)
             putString("text_alignment", newSettings.textAlignment)
+            putString("tts_voice_name", newSettings.ttsVoiceName)
+            putString("tts_locale_tag", newSettings.ttsLocaleTag)
+            putFloat("tts_speech_rate", newSettings.ttsSpeechRate)
             apply()
         }
         _settings.value = newSettings

@@ -20,10 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
@@ -77,6 +81,7 @@ fun ReaderScreen(
 
     val isTtsPlaying by viewModel.isTtsPlaying.collectAsState()
     val ttsHighlightIndex by viewModel.ttsHighlightIndex.collectAsState()
+    val ttsVoices by viewModel.ttsVoices.collectAsState()
 
     val settings by viewModel.settings.collectAsState()
 
@@ -95,6 +100,7 @@ fun ReaderScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var showHud by remember { mutableStateOf(false) }
+    var showChapterPicker by remember { mutableStateOf(false) }
     var hudInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     // Restore scroll position
@@ -374,6 +380,10 @@ fun ReaderScreen(
                     viewModel.setAutoScrollSpeed(it)
                     notifyInteraction()
                 },
+                onOpenChapterPicker = {
+                    showChapterPicker = true
+                    notifyInteraction()
+                },
                 onPrevChapter = {
                     viewModel.navigateToChapter(currentChapterIndex - 1)?.let {
                         onNavigateToChapter(it.url, it.title)
@@ -393,11 +403,32 @@ fun ReaderScreen(
                         viewModel.startTts(paragraphs, startIndex)
                     }
                 },
+                ttsVoices = ttsVoices,
+                onTtsVoiceSelected = {
+                    viewModel.selectTtsVoice(it)
+                    notifyInteraction()
+                },
+                onTtsRateChanged = {
+                    viewModel.setTtsSpeechRate(it)
+                    notifyInteraction()
+                },
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = { notifyInteraction() }
                 )
+            )
+        }
+
+        if (showChapterPicker) {
+            ChapterPickerSheet(
+                chapters = chapters,
+                currentChapterIndex = currentChapterIndex,
+                onDismiss = { showChapterPicker = false },
+                onChapterSelected = { chapter ->
+                    showChapterPicker = false
+                    onNavigateToChapter(chapter.url, chapter.title)
+                }
             )
         }
     }
@@ -414,14 +445,21 @@ fun BottomControlBar(
     onSettingsChanged: (ReaderSettings) -> Unit,
     onToggleAutoScroll: () -> Unit,
     onAutoScrollSpeedChanged: (Float) -> Unit,
+    onOpenChapterPicker: () -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
     isTtsPlaying: Boolean,
     onToggleTts: () -> Unit,
+    ttsVoices: List<TtsVoiceOption>,
+    onTtsVoiceSelected: (TtsVoiceOption) -> Unit,
+    onTtsRateChanged: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hudBg = Color(0xFF1E1E1E).copy(alpha = 0.95f)
     val hudText = Color.White
+    var showVoiceMenu by remember { mutableStateOf(false) }
+    val selectedVoice = ttsVoices.firstOrNull { it.name == settings.ttsVoiceName }
+        ?: ttsVoices.firstOrNull { it.localeTag == settings.ttsLocaleTag }
 
     Surface(
         color = hudBg,
@@ -458,6 +496,14 @@ fun BottomControlBar(
                     style = MaterialTheme.typography.labelLarge,
                     color = Color.White
                 )
+
+                IconButton(onClick = onOpenChapterPicker) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Find chapter",
+                        tint = Color.White
+                    )
+                }
 
                 IconButton(
                     onClick = onNextChapter,
@@ -497,6 +543,67 @@ fun BottomControlBar(
                     value = autoScrollSpeed,
                     onValueChange = onAutoScrollSpeedChanged,
                     valueRange = 0.5f..5.0f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = accentColor,
+                        activeTrackColor = accentColor
+                    )
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = Color.White)
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { showVoiceMenu = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) {
+                        Text(
+                            text = selectedVoice?.label ?: "Default voice",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showVoiceMenu,
+                        onDismissRequest = { showVoiceMenu = false }
+                    ) {
+                        ttsVoices.forEach { voice ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = voice.label,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                onClick = {
+                                    showVoiceMenu = false
+                                    onTtsVoiceSelected(voice)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Voice %.1fx".format(settings.ttsSpeechRate), style = MaterialTheme.typography.bodyMedium)
+                Slider(
+                    value = settings.ttsSpeechRate,
+                    onValueChange = onTtsRateChanged,
+                    valueRange = 0.5f..2.0f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
                         thumbColor = accentColor,
@@ -638,6 +745,87 @@ fun BottomControlBar(
                                 )
                                 .clickable { onSettingsChanged(settings.copy(themeMode = theme)) }
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChapterPickerSheet(
+    chapters: List<com.example.vantaread.data.db.ChapterEntity>,
+    currentChapterIndex: Int,
+    onDismiss: () -> Unit,
+    onChapterSelected: (com.example.vantaread.data.db.ChapterEntity) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filteredChapters = remember(chapters, query) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) {
+            chapters
+        } else {
+            chapters.filterIndexed { index, chapter ->
+                chapter.title.contains(trimmedQuery, ignoreCase = true) ||
+                    (index + 1).toString() == trimmedQuery
+            }
+        }
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Jump to chapter", style = MaterialTheme.typography.titleLarge)
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                label = { Text("Search title or number") },
+                singleLine = true
+            )
+            LazyColumn(
+                modifier = Modifier.height(420.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(filteredChapters) { _, chapter ->
+                    val realIndex = chapters.indexOfFirst { it.url == chapter.url }
+                    val isCurrent = realIndex == currentChapterIndex
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onChapterSelected(chapter) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCurrent) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Chapter ${realIndex + 1}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isCurrent) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                }
+                            )
+                            Text(
+                                text = chapter.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
