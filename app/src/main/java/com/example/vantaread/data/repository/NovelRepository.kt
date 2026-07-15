@@ -11,14 +11,33 @@ import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.SourceCatalog
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+
+data class SuggestionFetchResult(
+    val novels: List<Novel>,
+    val successfulSourceIds: List<String>,
+    val failedSourceIds: List<String>
+)
 
 class NovelRepository @Inject constructor(
     private val sources: Map<String, @JvmSuppressWildcards NovelSource>,
     private val novelDao: NovelDao,
     private val readingHistoryDao: ReadingHistoryDao
 ) {
+    private data class CachedSuggestionSource(
+        val novels: List<Novel>,
+        val fetchedAtMillis: Long
+    )
+
+    private val suggestionCache = mutableMapOf<String, CachedSuggestionSource>()
+    private val suggestionCacheTtlMillis = 10L * 60L * 1000L
+    private val suggestionSourceTimeoutMillis = 9000L
+    private val sourceOperationTimeoutMillis = 15000L
 
     private fun getSource(sourceId: String): NovelSource {
         val normalizedSourceId = SourceCatalog.normalize(sourceId)
@@ -29,32 +48,92 @@ class NovelRepository @Inject constructor(
     
     suspend fun searchNovels(query: String, sourceId: String): List<Novel> {
         val normalizedSourceId = SourceCatalog.normalize(sourceId)
-        val primaryResults = runCatching {
-            getSource(normalizedSourceId).searchNovels(query).map { it.withSource(normalizedSourceId) }
-        }.getOrElse { emptyList() }
+        val primaryResults = withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            runCatching {
+                getSource(normalizedSourceId).searchNovels(query).map { it.withSource(normalizedSourceId) }
+            }.getOrElse { emptyList() }
+        }.orEmpty()
         if (primaryResults.isNotEmpty() || normalizedSourceId == SourceCatalog.DEFAULT_SOURCE_ID) {
             return primaryResults
         }
 
-        return runCatching {
-            getSource(SourceCatalog.DEFAULT_SOURCE_ID).searchNovels(query)
-                .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
-        }.getOrElse { emptyList() }
+        return withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            runCatching {
+                getSource(SourceCatalog.DEFAULT_SOURCE_ID).searchNovels(query)
+                    .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
+            }.getOrElse { emptyList() }
+        }.orEmpty()
     }
 
     suspend fun getPopularNovels(sourceId: String): List<Novel> {
         val normalizedSourceId = SourceCatalog.normalize(sourceId)
-        val primaryResults = runCatching {
-            getSource(normalizedSourceId).getPopularNovels().map { it.withSource(normalizedSourceId) }
-        }.getOrElse { emptyList() }
+        val primaryResults = withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            runCatching {
+                getSource(normalizedSourceId).getPopularNovels().map { it.withSource(normalizedSourceId) }
+            }.getOrElse { emptyList() }
+        }.orEmpty()
         if (primaryResults.isNotEmpty() || normalizedSourceId == SourceCatalog.DEFAULT_SOURCE_ID) {
             return primaryResults
         }
 
-        return runCatching {
-            getSource(SourceCatalog.DEFAULT_SOURCE_ID).getPopularNovels()
-                .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
-        }.getOrElse { emptyList() }
+        return withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            runCatching {
+                getSource(SourceCatalog.DEFAULT_SOURCE_ID).getPopularNovels()
+                    .map { it.withSource(SourceCatalog.DEFAULT_SOURCE_ID) }
+            }.getOrElse { emptyList() }
+        }.orEmpty()
+    }
+
+    suspend fun getSuggestedNovels(
+        sourceIds: List<String>,
+        forceRefresh: Boolean = false
+    ): SuggestionFetchResult = supervisorScope {
+        val normalizedSourceIds = sourceIds
+            .map { SourceCatalog.normalize(it) }
+            .distinct()
+
+        val results = normalizedSourceIds.map { sourceId ->
+            async {
+                val novels = getSuggestedNovelsForSource(sourceId, forceRefresh)
+                sourceId to novels
+            }
+        }.awaitAll()
+
+        val successful = results.filter { it.second.isNotEmpty() }
+        val dedupedNovels = successful
+            .flatMap { it.second }
+            .distinctBy { it.url }
+            .shuffled()
+
+        SuggestionFetchResult(
+            novels = dedupedNovels,
+            successfulSourceIds = successful.map { it.first },
+            failedSourceIds = results.filter { it.second.isEmpty() }.map { it.first }
+        )
+    }
+
+    private suspend fun getSuggestedNovelsForSource(sourceId: String, forceRefresh: Boolean): List<Novel> {
+        val now = System.currentTimeMillis()
+        val cached = suggestionCache[sourceId]
+        if (!forceRefresh && cached != null && now - cached.fetchedAtMillis < suggestionCacheTtlMillis) {
+            return cached.novels
+        }
+
+        val fresh = withTimeoutOrNull(suggestionSourceTimeoutMillis) {
+            runCatching {
+                getSource(sourceId).getPopularNovels()
+                    .map { it.withSource(sourceId) }
+                    .filter { it.title.isNotBlank() && it.url.isNotBlank() }
+                    .distinctBy { it.url }
+            }.getOrDefault(emptyList())
+        }.orEmpty()
+
+        if (fresh.isNotEmpty()) {
+            suggestionCache[sourceId] = CachedSuggestionSource(fresh, now)
+            return fresh
+        }
+
+        return cached?.novels.orEmpty()
     }
 
     private fun Novel.withSource(sourceId: String): Novel {
@@ -63,7 +142,9 @@ class NovelRepository @Inject constructor(
 
     suspend fun getNovelDetails(novelUrl: String, sourceId: String): NovelDetails {
         val resolvedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
-        val details = getSource(resolvedSourceId).getNovelDetails(novelUrl)
+        val details = withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            getSource(resolvedSourceId).getNovelDetails(novelUrl)
+        } ?: throw IllegalStateException("Timed out loading novel details from ${SourceCatalog.nameFor(resolvedSourceId)}.")
         
         val existing = novelDao.getNovel(novelUrl)
         novelDao.insertNovel(
@@ -88,7 +169,9 @@ class NovelRepository @Inject constructor(
 
     suspend fun fetchAndCacheChapters(novelUrl: String, sourceId: String): List<Chapter> {
         val normalizedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
-        val chapters = getSource(normalizedSourceId).getChapterList(novelUrl)
+        val chapters = withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            getSource(normalizedSourceId).getChapterList(novelUrl)
+        }.orEmpty()
         novelDao.insertChapters(chapters.map {
             ChapterEntity(
                 url = it.url,
@@ -104,7 +187,9 @@ class NovelRepository @Inject constructor(
 
     suspend fun fetchAndCacheChapterPage(novelUrl: String, sourceId: String, page: Int): List<Chapter> {
         val normalizedSourceId = SourceCatalog.detectSourceId(novelUrl) ?: SourceCatalog.normalize(sourceId)
-        val chapters = getSource(normalizedSourceId).getChapterPage(novelUrl, page)
+        val chapters = withTimeoutOrNull(sourceOperationTimeoutMillis) {
+            getSource(normalizedSourceId).getChapterPage(novelUrl, page)
+        }.orEmpty()
         if (chapters.isNotEmpty()) {
             novelDao.insertChapters(chapters.map {
                 ChapterEntity(
@@ -127,7 +212,9 @@ class NovelRepository @Inject constructor(
             return chapterEntity.content
         }
         return try {
-            getSource(resolvedSourceId).getChapterContent(chapterUrl)
+            withTimeoutOrNull(sourceOperationTimeoutMillis) {
+                getSource(resolvedSourceId).getChapterContent(chapterUrl)
+            } ?: "Timed out loading chapter content from ${SourceCatalog.nameFor(resolvedSourceId)}."
         } catch (e: Exception) {
             "Error loading chapter content: ${e.message}"
         }

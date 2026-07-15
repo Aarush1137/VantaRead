@@ -11,5 +11,6 @@ import kotlinx.serialization.Serializable
 @Serializable data object Settings : NavKey
 @Serializable data object Stats : NavKey
 @Serializable data object Auth : NavKey
+@Serializable data object Profile : NavKey
 @Serializable data class NovelDetail(val novelUrl: String, val sourceId: String) : NavKey
 @Serializable data class Reader(val chapterUrl: String, val sourceId: String, val novelUrl: String = "", val chapterTitle: String = "") : NavKey

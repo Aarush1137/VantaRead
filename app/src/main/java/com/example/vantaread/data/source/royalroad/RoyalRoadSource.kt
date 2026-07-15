@@ -5,6 +5,7 @@ import com.example.vantaread.data.model.Chapter
 import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
+import com.example.vantaread.data.source.util.ScraperClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -18,14 +19,9 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     override val sourceId = "royalroad"
     override val sourceName = "Royal Road"
     private val baseUrl = "https://www.royalroad.com"
-    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-    private fun fetchDocument(url: String, referer: String = baseUrl): Document {
-        return Jsoup.connect(url)
-            .userAgent(userAgent)
-            .referrer(referer)
-            .timeout(30000)
-            .get()
+    private suspend fun fetchDocument(url: String, referer: String = baseUrl): Document {
+        return ScraperClient.fetchDocument(context, url, referer)
     }
 
     private fun absoluteUrl(url: String): String {
@@ -51,7 +47,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         
         val deferredDocs = urls.map { url ->
             async {
-                try { fetchDocument(url) } catch (e: Exception) { null }
+                runCatching { fetchDocument(url) }.getOrNull()
             }
         }
         
@@ -82,7 +78,7 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
         
         val deferredDocs = urls.map { url ->
             async {
-                try { fetchDocument(url) } catch (e: Exception) { null }
+                runCatching { fetchDocument(url) }.getOrNull()
             }
         }
         

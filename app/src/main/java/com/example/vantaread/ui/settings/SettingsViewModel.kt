@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.vantaread.data.model.AppAccent
 import com.example.vantaread.data.prefs.ReaderPreferencesManager
 import com.example.vantaread.data.prefs.SourcePreferencesManager
+import com.example.vantaread.data.repository.AuthRepository
 import com.example.vantaread.data.repository.NovelRepository
 import com.example.vantaread.data.source.SourceCatalog
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,7 +21,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val preferencesManager: ReaderPreferencesManager,
     private val sourcePreferencesManager: SourcePreferencesManager,
-    private val novelRepository: NovelRepository
+    private val novelRepository: NovelRepository,
+    authRepository: AuthRepository
 ) : ViewModel() {
 
     val currentTheme: StateFlow<String> = preferencesManager.theme
@@ -29,6 +33,11 @@ class SettingsViewModel @Inject constructor(
         
     val defaultSource: StateFlow<String> = preferencesManager.defaultSource
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SourceCatalog.DEFAULT_SOURCE_ID)
+
+    val currentUser = authRepository.currentUser
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
 
     fun setTheme(theme: String) {
         viewModelScope.launch {
@@ -58,9 +67,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun clearCache() {
+    fun clearHistory() {
         viewModelScope.launch {
             novelRepository.clearHistory()
+            _message.value = "Reading history cleared"
+        }
+    }
+
+    fun clearDownloads() {
+        viewModelScope.launch {
+            novelRepository.removeAllDownloadedChapters()
+            _message.value = "Offline downloads cleared"
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.DownloadDone
@@ -19,25 +20,44 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.vantaread.ui.auth.AuthScreen
+import com.example.vantaread.ui.auth.AuthViewModel
 import com.example.vantaread.ui.detail.NovelDetailScreen
 import com.example.vantaread.ui.discover.DiscoverScreen
 import com.example.vantaread.ui.downloads.DownloadsScreen
 import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
+import com.example.vantaread.ui.profile.ProfileScreen
 import com.example.vantaread.ui.settings.SettingsScreen
 import com.example.vantaread.ui.stats.StatsScreen
 import com.example.vantaread.ui.suggestions.SuggestionsScreen
 
 @Composable
 fun MainNavigation() {
-    val backStack = rememberNavBackStack(Library)
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val currentUser by authViewModel.currentUser.collectAsState()
+    var continuedAsGuest by rememberSaveable { mutableStateOf(false) }
+    val backStack = rememberNavBackStack(if (currentUser == null) Auth else Library)
     val currentRoute = backStack.lastOrNull()
+
+    LaunchedEffect(currentUser, continuedAsGuest) {
+        if (currentUser == null && !continuedAsGuest && currentRoute !is Auth) {
+            backStack.clear()
+            backStack.add(Auth)
+        }
+    }
     
     val showBottomBar = currentRoute is Library ||
         currentRoute is Discover ||
@@ -45,6 +65,7 @@ fun MainNavigation() {
         currentRoute is Downloads ||
         currentRoute is History ||
         currentRoute is Stats ||
+        currentRoute is Profile ||
         currentRoute is Settings
 
     Scaffold(
@@ -106,6 +127,17 @@ fun MainNavigation() {
                         icon = { Icon(Icons.Filled.History, contentDescription = "Stats") },
                         label = { Text("Stats") }
                     )
+                    NavigationBarItem(
+                        selected = currentRoute is Profile,
+                        onClick = {
+                            if (currentRoute !is Profile) {
+                                backStack.clear()
+                                backStack.add(Profile)
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                        label = { Text("Profile") }
+                    )
                 }
             }
         }
@@ -140,7 +172,17 @@ fun MainNavigation() {
                 }
                 entry<Auth> {
                     AuthScreen(
-                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) }
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
+                        onAuthenticated = {
+                            continuedAsGuest = false
+                            backStack.clear()
+                            backStack.add(Library)
+                        },
+                        onContinueAsGuest = {
+                            continuedAsGuest = true
+                            backStack.clear()
+                            backStack.add(Library)
+                        }
                     )
                 }
                 entry<Suggestions> {
@@ -192,11 +234,25 @@ fun MainNavigation() {
                 }
                 entry<Settings> {
                     SettingsScreen(
-                        onNavigateToAuth = { backStack.add(Auth) }
+                        onNavigateToAuth = { backStack.add(Auth) },
+                        onNavigateToProfile = {
+                            backStack.clear()
+                            backStack.add(Profile)
+                        }
                     )
                 }
                 entry<Stats> {
                     StatsScreen()
+                }
+                entry<Profile> {
+                    ProfileScreen(
+                        onNavigateToAuth = { backStack.add(Auth) },
+                        onNavigateToStats = {
+                            backStack.clear()
+                            backStack.add(Stats)
+                        },
+                        onNavigateToSettings = { backStack.add(Settings) }
+                    )
                 }
             },
         )

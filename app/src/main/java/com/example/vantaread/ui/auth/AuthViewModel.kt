@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vantaread.data.repository.AuthRepository
 import com.example.vantaread.data.repository.CloudSyncRepository
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseException
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
@@ -36,6 +39,10 @@ class AuthViewModel @Inject constructor(
 
     private var verificationId: String? = null
 
+    fun showMessage(message: String) {
+        _error.value = message
+    }
+
     fun signIn(email: String, pass: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -62,6 +69,27 @@ class AuthViewModel @Inject constructor(
 
     fun signOut() {
         authRepository.signOut()
+    }
+
+    fun signInWithGoogleAccount(account: GoogleSignInAccount?) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val idToken = account?.idToken
+                if (idToken.isNullOrBlank()) {
+                    _error.value = "Google sign-in is missing an ID token. Check the local web client ID."
+                } else {
+                    val credential = GoogleAuthProvider.getCredential(idToken, null)
+                    authRepository.auth.signInWithCredential(credential).await()
+                }
+            } catch (e: ApiException) {
+                _error.value = e.message ?: "Google sign-in failed"
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Google sign-in failed"
+            }
+            _isLoading.value = false
+        }
     }
 
     fun syncBookmarks() {

@@ -20,7 +20,19 @@ object WebViewScraper {
             val webView = WebView(context)
             webView.settings.javaScriptEnabled = true
             webView.settings.domStorageEnabled = true
-            webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+            webView.settings.loadsImagesAutomatically = false
+            webView.settings.blockNetworkImage = true
+            webView.settings.userAgentString = ScraperClient.DESKTOP_USER_AGENT
+
+            webView.postDelayed({
+                if (!finished) {
+                    finished = true
+                    if (continuation.isActive) {
+                        continuation.resume(Jsoup.parse("<html><body>Timed out loading $url</body></html>", url))
+                    }
+                    webView.destroy()
+                }
+            }, 20000)
             
             webView.webViewClient = object : WebViewClient() {
                 var attempts = 0
@@ -60,11 +72,16 @@ object WebViewScraper {
                                     ?.replace("\\r", "\r")
                                     ?.replace("\\t", "\t") ?: ""
                                 
-                                if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...") || unescapedHtml.length < 1000) {
+                                if (
+                                    unescapedHtml.contains("challenge-error-text") ||
+                                    unescapedHtml.contains("Just a moment...") ||
+                                    unescapedHtml.contains("Checking if the site connection is secure") ||
+                                    unescapedHtml.length < 1000
+                                ) {
                                     // Still on Cloudflare page or page hasn't fully rendered its content yet
                                     if (attempts > 30) {
                                         finished = true
-                                        if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
+                                        if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml, url))
                                         view.destroy()
                                     } else {
                                         // Check again in 500ms
@@ -72,7 +89,7 @@ object WebViewScraper {
                                     }
                                 } else {
                                     finished = true
-                                    if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
+                                    if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml, url))
                                     view.destroy()
                                 }
                             }

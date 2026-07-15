@@ -13,7 +13,7 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 ### 📚 Personal Library, History & Stats
 * **Local Library:** Bookmark favorite novels for easy access and tracking.
 * **Continue Reading:** Seamlessly resume your recent novels right from the Library or History tabs.
-* **Reading Statistics:** Track your total chapters read, novels started, and your most read novel on the new Stats screen.
+* **Reading Statistics:** Track chapters read, novels started, streaks, bookmarks, offline chapters, favorite source, and last-read activity on the Stats screen.
 * **Offline Reading:** Download individual chapters or entire novels for offline reading using a robust WorkManager implementation.
 * **Grouped Downloads Screen:** Beautifully organized accordion UI grouping all your downloaded chapters by novel.
 * **Resilient Downloads:** Downloads require connectivity, avoid duplicate WorkManager jobs, retry failed fetches, and surface per-novel progress through notifications.
@@ -27,15 +27,21 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 * **Quick Chapter Advance:** Pull upward at the end of a chapter to open the next one.
 
 ### Account & Cloud Sync
+* **Startup Account Prompt:** Signed-out readers are greeted with email, account creation, Google, phone, and guest options on launch.
+* **Profile Section:** View account state, bookmark counts, reading progress, offline chapters, and cloud sync actions from a dedicated Profile tab.
 * **Firebase Authentication:** Sign in with email/password or phone verification.
+* **Google Sign-In Ready:** Google auth is wired through Firebase using a local `google_web_client_id` resource so secrets stay out of Git.
 * **Private Bookmark Sync:** Back up and restore bookmarked novels across devices. Sync uses stable IDs, removes stale cloud bookmarks, and safely handles libraries larger than Firestore's 500-write batch limit.
 * **Secure Rules:** `firestore.rules` scopes bookmark access strictly to the authenticated user.
 
 ### 🔍 Discovery & Sources
 * **Multi-Source Support:** Read from NovelFull, LightNovelPub, FreeWebNovel, ScribbleHub, and Royal Road.
-* **Advanced Web Scraper:** Utilizes native Jsoup for speed, falling back to a headless Android `WebView` that evaluates JS challenges to seamlessly bypass strict Cloudflare Bot Protection (WAF). 
+* **Resilient Suggestions:** Suggestions now shuffle across all sources, show quick active-source results first, cache recent successful feeds, and fall back to working servers when another source is slow or unavailable.
+* **Advanced Web Scraper:** Utilizes native Jsoup with retry headers for speed, falling back to a headless Android `WebView` that evaluates JS challenges to bypass strict Cloudflare Bot Protection (WAF).
+* **Source Timeouts:** Search, details, chapter list, and reader content requests use bounded timeouts so broken servers do not freeze the app flow.
 * **Chapter Synthesis:** Instantly calculates chapters for paginated novels (500+ chapters load instantly without UI freezing).
 * **Add Via URL:** Instantly import any supported novel directly from its URL.
+* **Improved Settings:** Settings now has clearer appearance, source, download, data cleanup, and account sections.
 
 ---
 
@@ -93,6 +99,8 @@ Current Implemented Sources:
 The Android app expects a local Firebase config at `app/google-services.json`. This file is intentionally ignored because it contains a Firebase/Google API key. Use `app/google-services.example.json` as the shape reference, then download the real Android config from Firebase Console for package `com.example.vantaread`.
 
 Do not commit `app/google-services.json`. If a key is accidentally pushed, rotate or revoke it in Google Cloud/Firebase before closing the GitHub secret alert.
+
+For Google sign-in, set `google_web_client_id` in `app/src/main/res/values/firebase_auth.xml` to your Firebase Web OAuth client ID. The committed placeholder keeps local auth wiring explicit without checking private config into source control.
 
 Before releasing a build, enable the required sign-in providers in the Firebase console:
 

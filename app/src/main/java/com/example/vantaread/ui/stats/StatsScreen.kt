@@ -14,8 +14,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Source
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Update
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +58,41 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
                     value = uiState.totalNovelsStarted.toString(),
                     icon = Icons.Default.Book
                 )
+
+                StatCard(
+                    title = "Reading Streak",
+                    value = "${uiState.readingStreakDays} days",
+                    icon = Icons.Default.LocalFireDepartment
+                )
+
+                StatCard(
+                    title = "Bookmarked Novels",
+                    value = uiState.bookmarkedNovels.toString(),
+                    icon = Icons.Default.Bookmarks
+                )
+
+                StatCard(
+                    title = "Downloaded Chapters",
+                    value = "${uiState.downloadedChapters} across ${uiState.offlineNovels} novels",
+                    icon = Icons.Default.DownloadDone
+                )
                 
                 StatCard(
                     title = "Most Read Novel",
                     value = uiState.mostReadNovelTitle,
                     icon = Icons.Default.Star
+                )
+
+                StatCard(
+                    title = "Favorite Source",
+                    value = uiState.favoriteSourceName,
+                    icon = Icons.Default.Source
+                )
+
+                StatCard(
+                    title = "Last Read",
+                    value = uiState.lastReadTitle,
+                    icon = Icons.Default.Update
                 )
             }
         }

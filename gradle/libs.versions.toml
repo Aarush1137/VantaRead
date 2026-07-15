@@ -19,6 +19,7 @@ room = "2.7.0"
 coil = "2.6.0"
 jsoup = "1.17.2"
 googleServices = "4.4.1"
+playServicesAuth = "21.2.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -51,6 +52,7 @@ room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

@@ -3,6 +3,7 @@ package com.example.vantaread.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
@@ -15,8 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,11 +39,14 @@ import com.example.vantaread.data.source.SourceCatalog
 @Composable
 fun SettingsScreen(
     onNavigateToAuth: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val currentTheme by viewModel.currentTheme.collectAsState()
     val currentAccent by viewModel.currentAccent.collectAsState()
     val defaultSource by viewModel.defaultSource.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val message by viewModel.message.collectAsState()
 
     val themes = listOf(
         "system" to "System",
@@ -59,82 +66,73 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Appearance",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            themes.forEach { (id, label) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.setTheme(id) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = currentTheme == id,
-                        onClick = { viewModel.setTheme(id) }
-                    )
-                    Text(text = label, modifier = Modifier.padding(start = 8.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Accent Color",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            AppAccent.entries.forEach { accent ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.setAccent(accent) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = currentAccent == accent,
-                        onClick = { viewModel.setAccent(accent) }
-                    )
-                    Box(
+            SettingsSection(title = "Appearance") {
+                themes.forEach { (id, label) ->
+                    Row(
                         modifier = Modifier
-                            .padding(start = 8.dp)
-                            .size(22.dp)
-                            .background(accent.color, CircleShape)
-                    )
-                    Text(text = accent.label, modifier = Modifier.padding(start = 12.dp))
+                            .fillMaxWidth()
+                            .clickable { viewModel.setTheme(id) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentTheme == id,
+                            onClick = { viewModel.setTheme(id) }
+                        )
+                        Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Sources",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            SettingsSection(title = "Accent Color") {
+                AppAccent.entries.forEach { accent ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setAccent(accent) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentAccent == accent,
+                            onClick = { viewModel.setAccent(accent) }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .size(22.dp)
+                                .background(accent.color, CircleShape)
+                        )
+                        Text(text = accent.label, modifier = Modifier.padding(start = 12.dp))
+                    }
+                }
+            }
 
-            SourceCatalog.sources.forEach { source ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.setDefaultSource(source.id) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = defaultSource == source.id,
-                        onClick = { viewModel.setDefaultSource(source.id) }
-                    )
-                    Text(text = source.name, modifier = Modifier.padding(start = 8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            SettingsSection(title = "Sources") {
+                Text(
+                    text = "Default source is also used first when suggestions refresh.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                SourceCatalog.sources.forEach { source ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setDefaultSource(source.id) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = defaultSource == source.id,
+                            onClick = { viewModel.setDefaultSource(source.id) }
+                        )
+                        Text(text = source.name, modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
             }
 
@@ -149,67 +147,89 @@ fun SettingsScreen(
                 100 to "All chapters"
             )
 
-            Text(
-                text = "Downloads",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            Text(
-                text = "Automatically download chapters when adding a novel or reading.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            SettingsSection(title = "Downloads") {
+                Text(
+                    text = "Automatically download chapters when adding a novel.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-            batchAmounts.forEach { (amount, label) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.setBatchDownloadAmount(amount) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = currentBatchAmount == amount,
-                        onClick = { viewModel.setBatchDownloadAmount(amount) }
-                    )
-                    Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                batchAmounts.forEach { (amount, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setBatchDownloadAmount(amount) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentBatchAmount == amount,
+                            onClick = { viewModel.setBatchDownloadAmount(amount) }
+                        )
+                        Text(text = label, modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Data",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            Button(
-                onClick = { viewModel.clearCache() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Clear Cache & History")
+            SettingsSection(title = "Data") {
+                OutlinedButton(
+                    onClick = { viewModel.clearHistory() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Clear reading history")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { viewModel.clearDownloads() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Clear offline downloads")
+                }
+                message?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            SettingsSection(title = "Account") {
+                Text(
+                    text = currentUser?.email ?: currentUser?.phoneNumber ?: "Guest mode",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Button(
+                    onClick = if (currentUser == null) onNavigateToAuth else onNavigateToProfile,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (currentUser == null) "Sign in or create account" else "Open profile & cloud sync")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Account",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-
-            Button(
-                onClick = onNavigateToAuth,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Manage Account & Cloud Sync")
-            }
+            content()
         }
     }
 }

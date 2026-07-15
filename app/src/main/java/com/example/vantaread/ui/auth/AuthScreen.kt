@@ -2,7 +2,10 @@ package com.example.vantaread.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -15,12 +18,19 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
+import com.example.vantaread.R
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     onNavigateBack: () -> Unit,
+    onAuthenticated: () -> Unit = onNavigateBack,
+    onContinueAsGuest: () -> Unit = onNavigateBack,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     var email by remember { mutableStateOf("") }
@@ -37,6 +47,23 @@ fun AuthScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     
     val context = LocalContext.current
+    val googleWebClientId = stringResource(R.string.google_web_client_id)
+    val googleLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            viewModel.signInWithGoogleAccount(task.getResult(ApiException::class.java))
+        } catch (e: ApiException) {
+            viewModel.showMessage(e.message ?: "Google sign-in was cancelled or failed.")
+        }
+    }
+
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            onAuthenticated()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -52,7 +79,11 @@ fun AuthScreen(
             verticalArrangement = Arrangement.Center
         ) {
             if (currentUser != null) {
-                Text("Logged in as: ${currentUser?.email}", style = MaterialTheme.typography.titleMedium)
+                Text("Signed in", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    currentUser?.displayName ?: currentUser?.email ?: currentUser?.phoneNumber ?: "VantaRead account",
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = { viewModel.syncBookmarks() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Sync Bookmarks to Cloud")
@@ -71,6 +102,27 @@ fun AuthScreen(
                     style = MaterialTheme.typography.headlineMedium
                 )
                 Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        if (googleWebClientId == "YOUR_WEB_CLIENT_ID") {
+                            viewModel.showMessage("Google sign-in needs google_web_client_id in app/src/main/res/values/firebase_auth.xml.")
+                        } else {
+                            val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                .requestIdToken(googleWebClientId)
+                                .requestEmail()
+                                .build()
+                            val client = GoogleSignIn.getClient(context, options)
+                            googleLauncher.launch(client.signInIntent)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                ) {
+                    Icon(Icons.Filled.AccountCircle, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Continue with Google")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 if (usePhoneAuth) {
                     if (isCodeSent) {
@@ -187,6 +239,10 @@ fun AuthScreen(
                 
                 TextButton(onClick = { usePhoneAuth = !usePhoneAuth }) {
                     Text(if (usePhoneAuth) "Use Email/Password instead" else "Sign in with Phone Number")
+                }
+
+                TextButton(onClick = onContinueAsGuest) {
+                    Text("Continue without account")
                 }
             }
         }
