@@ -19,12 +19,8 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
     private val baseUrl = "https://lightnovelpub.me"
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(userAgent)
-            .referrer(baseUrl)
-            .timeout(30000)
-            .get()
+    private suspend fun fetchDocument(url: String): Document {
+        return WebViewScraper.getHtml(context, url)
     }
 
     private fun absoluteUrl(url: String): String {
@@ -62,11 +58,20 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/search?keyword=${URLEncoder.encode(query, "UTF-8")}"
-        val searchResults = parseNovelList(fetchDocument(url))
+        val doc = runCatching { 
+            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+        }.getOrElse { fetchDocument(url) }
+        
+        val searchResults = parseNovelList(doc)
         if (searchResults.isNotEmpty()) return@withContext searchResults
 
         val normalizedQuery = query.trim().lowercase()
-        parseNovelList(fetchDocument("$baseUrl/list/most-popular-novels/"))
+        
+        val popularDoc = runCatching { 
+            Jsoup.connect("$baseUrl/list/most-popular-novels/").userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+        }.getOrElse { fetchDocument("$baseUrl/list/most-popular-novels/") }
+        
+        parseNovelList(popularDoc)
             .filter { it.title.lowercase().contains(normalizedQuery) }
     }
 
@@ -102,21 +107,37 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getChapterList(novelUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        // LightNovelPub usually has a /chapters endpoint or lists them on the main page.
-        // We'll try the chapters page if available.
-        val doc = fetchDocument(novelUrl)
-        parseChapterPage(doc, novelUrl, 0)
+        val doc = runCatching { 
+            Jsoup.connect(novelUrl).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+        }.getOrElse { fetchDocument(novelUrl) }
+        
+        val headerText = doc.selectFirst(".header-stats, .novel-info, .m-book1")?.text() ?: ""
+        val chapterMatch = Regex("([0-9,]+)\\s*Chapters?", RegexOption.IGNORE_CASE).find(headerText)
+        val chapterCount = chapterMatch?.groupValues?.get(1)?.replace(",", "")?.toIntOrNull()
+        
+        if (chapterCount != null && chapterCount > 0) {
+            val chaptersUrlBase = novelUrl.trimEnd('/')
+            return@withContext (1..chapterCount).map { index ->
+                Chapter(
+                    url = "$chaptersUrlBase/chapter-$index",
+                    novelUrl = novelUrl,
+                    title = "Chapter $index",
+                    index = index - 1
+                )
+            }
+        }
+        
+        // Fallback to parsing the chapters page directly
+        val chaptersUrl = if (novelUrl.endsWith("/chapters")) novelUrl else "${novelUrl.trimEnd('/')}/chapters"
+        val chaptersDoc = fetchDocument(chaptersUrl)
+        parseChapterPage(chaptersDoc, novelUrl, 0)
     }
 
     override suspend fun getChapterPage(novelUrl: String, page: Int): List<Chapter> = withContext(Dispatchers.IO) {
-        if (page <= 0) {
-            getChapterList(novelUrl)
-        } else {
-            val pageUrl = "${novelUrl.trimEnd('/')}/${page + 1}"
-            val doc = runCatching { fetchDocument(pageUrl) }
-                .getOrElse { WebViewScraper.getHtml(context, pageUrl) }
-            parseChapterPage(doc, novelUrl, page)
-        }
+        val chaptersUrl = if (novelUrl.endsWith("/chapters")) novelUrl else "${novelUrl.trimEnd('/')}/chapters"
+        val pageUrl = if (page <= 0) chaptersUrl else "$chaptersUrl/page-${page + 1}"
+        val doc = fetchDocument(pageUrl)
+        parseChapterPage(doc, novelUrl, page)
     }
 
     private fun parseChapterPage(doc: Document, novelUrl: String, page: Int): List<Chapter> {

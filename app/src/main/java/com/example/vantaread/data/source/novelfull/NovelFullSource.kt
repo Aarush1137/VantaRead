@@ -25,9 +25,13 @@ class NovelFullSource(private val context: Context) : NovelSource {
         }
     }
 
+    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/most-popular"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = runCatching { 
+            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+        }.getOrElse { WebViewScraper.getHtml(context, url) }
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".list-truyen .row")
@@ -46,7 +50,9 @@ class NovelFullSource(private val context: Context) : NovelSource {
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
         val url = "$baseUrl/search?keyword=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = WebViewScraper.getHtml(context, url)
+        val doc = runCatching { 
+            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+        }.getOrElse { WebViewScraper.getHtml(context, url) }
         
         val novels = mutableListOf<Novel>()
         val items = doc.select(".list-truyen .row")
@@ -98,14 +104,28 @@ class NovelFullSource(private val context: Context) : NovelSource {
         
         val chapters = mutableListOf<Chapter>()
         
-        // NovelFull shows chapters using pagination, but often has a "show all" or we can parse the list.
-        // For simplicity, we just grab the chapters visible on the first page or the chapter list fragment.
-        val elements = doc.select("ul.list-chapter li a")
+        val novelId = doc.selectFirst("#truyen-id")?.attr("value")
+            ?: doc.selectFirst("[data-novel-id]")?.attr("data-novel-id")
+            
+        if (novelId != null && novelId.isNotEmpty()) {
+            val ajaxUrl = "$baseUrl/ajax/chapter-archive?novelId=$novelId"
+            val ajaxDoc = WebViewScraper.getHtml(context, ajaxUrl)
+            
+            ajaxDoc.select("ul.list-chapter li a, .panel-body li a").forEachIndexed { index, element ->
+                val url = absoluteUrl(element.attr("href"))
+                val title = element.text()
+                chapters.add(Chapter(url, novelUrl, title, index))
+            }
+        }
         
-        elements.forEachIndexed { index, element ->
-            val url = absoluteUrl(element.attr("href"))
-            val title = element.text()
-            chapters.add(Chapter(url, novelUrl, title, index))
+        // Fallback to pagination or first page
+        if (chapters.isEmpty()) {
+            val elements = doc.select("ul.list-chapter li a")
+            elements.forEachIndexed { index, element ->
+                val url = absoluteUrl(element.attr("href"))
+                val title = element.text()
+                chapters.add(Chapter(url, novelUrl, title, index))
+            }
         }
         
         chapters
