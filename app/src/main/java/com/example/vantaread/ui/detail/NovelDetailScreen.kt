@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +28,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,12 +53,24 @@ fun NovelDetailScreen(
     val isLoadingMoreChapters by viewModel.isLoadingMoreChapters.collectAsState()
     val canLoadMoreChapters by viewModel.canLoadMoreChapters.collectAsState()
     val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(downloadMessage) {
         downloadMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearDownloadMessage()
         }
+    }
+
+    LaunchedEffect(listState, canLoadMoreChapters) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .filter { it != null && it >= listState.layoutInfo.totalItemsCount - 5 }
+            .distinctUntilChanged()
+            .collect {
+                if (canLoadMoreChapters && !isLoadingMoreChapters) {
+                    viewModel.loadMoreChapters()
+                }
+            }
     }
 
     Scaffold(
@@ -101,6 +117,7 @@ fun NovelDetailScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp)
             ) {

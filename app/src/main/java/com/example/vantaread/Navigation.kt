@@ -99,6 +99,8 @@ fun MainNavigation() {
                 entry<Library> {
                     LibraryScreen(
                         onNavigateToDiscover = { backStack.add(Discover) },
+                        onNavigateToHistory = { backStack.add(History) },
+                        onNavigateToSettings = { backStack.add(Settings) },
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) },
                         onContinueReading = { chapterUrl, sourceId, novelUrl, chapterTitle ->
                             backStack.add(Reader(chapterUrl, sourceId, novelUrl, chapterTitle))
