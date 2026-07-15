@@ -28,11 +28,12 @@ object WebViewScraper {
                 if (!finished) {
                     finished = true
                     if (continuation.isActive) {
+                        android.util.Log.w("WebViewScraper", "Timeout loading $url")
                         continuation.resume(Jsoup.parse("<html><body>Timed out loading $url</body></html>", url))
                     }
                     webView.destroy()
                 }
-            }, 20000)
+            }, 30000) // Increased to 30s for tough Cloudflare challenges
             
             webView.webViewClient = object : WebViewClient() {
                 var attempts = 0
@@ -45,6 +46,7 @@ object WebViewScraper {
                 ) {
                     super.onReceivedError(view, request, error)
                     if (finished) return
+                    android.util.Log.e("WebViewScraper", "Error loading $url: ${error.description}")
                     finished = true
                     if (continuation.isActive) continuation.resumeWith(Result.success(Jsoup.parse("<html><body>Error: ${error.description}</body></html>")))
                     view.destroy()

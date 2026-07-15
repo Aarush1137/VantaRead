@@ -21,7 +21,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+
+data class AuthUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isCodeSent: Boolean = false,
+    val verificationId: String? = null,
+    val isFirebaseConfigured: Boolean = false
+)
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -32,36 +41,33 @@ class AuthViewModel @Inject constructor(
     val currentUser = authRepository.currentUser
     val isFirebaseConfigured = authRepository.isConfigured
 
-    private val _isLoading = MutableStateFlow(value = false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _uiState = MutableStateFlow(AuthUiState(isFirebaseConfigured = authRepository.isConfigured))
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _isCodeSent = MutableStateFlow(false)
-    val isCodeSent: StateFlow<Boolean> = _isCodeSent.asStateFlow()
-
-    private var verificationId: String? = null
     private var phoneVerificationTimeoutJob: Job? = null
 
     fun showMessage(message: String) {
-        _isLoading.value = false
-        _error.value = message
+        _uiState.value = _uiState.value.copy(isLoading = false, error = message)
     }
 
     fun clearMessage() {
-        _error.value = null
+        _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun submitEmailPassword(email: String, password: String, isSignUp: Boolean) {
         val normalizedEmail = email.trim()
+        if (normalizedEmail.isBlank() || password.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Email and password cannot be empty.")
+            return
+        }
+        
         when {
             !EMAIL_PATTERN.matches(normalizedEmail) -> {
-                _error.value = "Enter a valid email address."
+                _uiState.value = _uiState.value.copy(error = "Enter a valid email address.")
                 return
             }
             password.length < MINIMUM_PASSWORD_LENGTH -> {
-                _error.value = "Password must contain at least $MINIMUM_PASSWORD_LENGTH characters."
+                _uiState.value = _uiState.value.copy(error = "Password must contain at least $MINIMUM_PASSWORD_LENGTH characters.")
                 return
             }
         }
@@ -72,26 +78,30 @@ class AuthViewModel @Inject constructor(
     fun signIn(email: String, pass: String) {
         viewModelScope.launch {
             Log.d("AuthViewModel", "Sign in started for $email")
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                if (!isFirebaseConfigured) {
+                    throw Exception("Firebase is not configured. Add google-services.json to enable sign-in.")
+                }
+                
                 val result = withTimeout(AUTH_TIMEOUT_MS) {
                     authRepository.signIn(email, pass)
                 }
                 if (result.isFailure) {
-                    Log.w("AuthViewModel", "Sign in failed: ${result.exceptionOrNull()?.message}")
-                    _error.value = result.exceptionOrNull()?.message ?: "Sign in failed"
+                    val message = result.exceptionOrNull()?.message ?: "Sign in failed"
+                    Log.w("AuthViewModel", "Sign in failed: $message")
+                    _uiState.value = _uiState.value.copy(error = message)
                 } else {
                     Log.d("AuthViewModel", "Sign in successful")
                 }
-            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Sign in timed out after ${AUTH_TIMEOUT_MS}ms")
-                _error.value = "Sign in timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
+                _uiState.value = _uiState.value.copy(error = "Sign in timed out. This often happens if the Firebase configuration is missing or invalid.")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Sign in exception", e)
-                _error.value = e.message ?: "Sign in failed"
+                _uiState.value = _uiState.value.copy(error = e.message ?: "An unexpected error occurred.")
             } finally {
-                _isLoading.value = false
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }
@@ -99,26 +109,30 @@ class AuthViewModel @Inject constructor(
     fun signUp(email: String, pass: String) {
         viewModelScope.launch {
             Log.d("AuthViewModel", "Sign up started for $email")
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                if (!isFirebaseConfigured) {
+                    throw Exception("Firebase is not configured. Add google-services.json to enable sign-up.")
+                }
+
                 val result = withTimeout(AUTH_TIMEOUT_MS) {
                     authRepository.signUp(email, pass)
                 }
                 if (result.isFailure) {
-                    Log.w("AuthViewModel", "Sign up failed: ${result.exceptionOrNull()?.message}")
-                    _error.value = result.exceptionOrNull()?.message ?: "Sign up failed"
+                    val message = result.exceptionOrNull()?.message ?: "Sign up failed"
+                    Log.w("AuthViewModel", "Sign up failed: $message")
+                    _uiState.value = _uiState.value.copy(error = message)
                 } else {
                     Log.d("AuthViewModel", "Sign up successful")
                 }
-            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Sign up timed out after ${AUTH_TIMEOUT_MS}ms")
-                _error.value = "Sign up timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
+                _uiState.value = _uiState.value.copy(error = "Sign up timed out. This often happens if the Firebase configuration is missing or invalid.")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Sign up exception", e)
-                _error.value = e.message ?: "Sign up failed"
+                _uiState.value = _uiState.value.copy(error = e.message ?: "An unexpected error occurred.")
             } finally {
-                _isLoading.value = false
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }
@@ -130,20 +144,24 @@ class AuthViewModel @Inject constructor(
     fun signInWithGoogleAccount(account: GoogleSignInAccount?) {
         viewModelScope.launch {
             Log.d("AuthViewModel", "Google sign in started")
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                if (!isFirebaseConfigured) {
+                    throw Exception("Firebase is not configured. Add google-services.json.")
+                }
+
                 withTimeout(AUTH_TIMEOUT_MS) {
                     val idToken = account?.idToken
                     if (idToken.isNullOrBlank()) {
                         Log.e("AuthViewModel", "Google sign in failed: Missing ID token")
-                        _error.value = "Google sign-in is missing an ID token. Check the local web client ID."
+                        _uiState.value = _uiState.value.copy(error = "Google sign-in is missing an ID token. Check the local web client ID.")
                     } else {
                         val credential = GoogleAuthProvider.getCredential(idToken, null)
                         val result = authRepository.signInWithCredential(credential)
                         if (result.isFailure) {
-                            Log.w("AuthViewModel", "Google sign in failed: ${result.exceptionOrNull()?.message}")
-                            _error.value = result.exceptionOrNull()?.message ?: "Google sign-in failed"
+                            val message = result.exceptionOrNull()?.message ?: "Google sign-in failed"
+                            Log.w("AuthViewModel", "Google sign in failed: $message")
+                            _uiState.value = _uiState.value.copy(error = message)
                         } else {
                             Log.d("AuthViewModel", "Google sign in successful")
                         }
@@ -151,63 +169,33 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: ApiException) {
                 Log.e("AuthViewModel", "Google sign in ApiException", e)
-                _error.value = e.message ?: "Google sign-in failed"
-            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                _uiState.value = _uiState.value.copy(error = "Google sign-in failed (Code: ${e.statusCode}). Check Firebase Console configuration.")
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Google sign in timed out after ${AUTH_TIMEOUT_MS}ms")
-                _error.value = "Google sign-in timed out. This may be due to a poor internet connection or a temporary issue with our authentication servers. Please try again in a moment."
+                _uiState.value = _uiState.value.copy(error = "Google sign-in timed out. Check your connection or Firebase config.")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Google sign in exception", e)
-                _error.value = e.message ?: "Google sign-in failed"
+                _uiState.value = _uiState.value.copy(error = e.message ?: "Google sign-in failed")
             } finally {
-                _isLoading.value = false
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
-        }
-    }
-
-    fun syncBookmarks() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                cloudSyncRepository.syncBookmarksToCloud()
-                _error.value = "Bookmarks synced successfully!"
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Failed to sync bookmarks"
-            }
-            _isLoading.value = false
-        }
-    }
-
-    fun syncBookmarksFromCloud() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                cloudSyncRepository.syncBookmarksFromCloud()
-                _error.value = "Bookmarks restored successfully!"
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Failed to restore bookmarks"
-            }
-            _isLoading.value = false
         }
     }
 
     fun verifyPhoneNumber(phoneNumber: String, activity: Activity) {
         val normalizedPhone = phoneNumber.trim()
         if (!PHONE_PATTERN.matches(normalizedPhone)) {
-            _error.value = "Enter a phone number with country code, for example +919876543210."
+            _uiState.update { it.copy(error = "Enter a phone number with country code, for example +919876543210.") }
             return
         }
 
         Log.d("AuthViewModel", "Phone verification started for $normalizedPhone")
-        _isLoading.value = true
-        _error.value = null
+        _uiState.update { it.copy(isLoading = true, error = null) }
         phoneVerificationTimeoutJob?.cancel()
 
         val auth = authRepository.auth
         if (auth == null) {
-            _isLoading.value = false
-            _error.value = "Phone sign-in is unavailable because Firebase is not configured in this build."
+            _uiState.update { it.copy(isLoading = false, error = "Phone sign-in is unavailable because Firebase is not configured.") }
             return
         }
 
@@ -226,8 +214,7 @@ class AuthViewModel @Inject constructor(
                     override fun onVerificationFailed(e: FirebaseException) {
                         Log.e("AuthViewModel", "Phone verification failed", e)
                         phoneVerificationTimeoutJob?.cancel()
-                        _isLoading.value = false
-                        _error.value = e.message ?: "Verification failed"
+                        _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Verification failed")
                     }
 
                     override fun onCodeSent(
@@ -236,10 +223,7 @@ class AuthViewModel @Inject constructor(
                     ) {
                         Log.d("AuthViewModel", "Phone verification code sent")
                         phoneVerificationTimeoutJob?.cancel()
-                        this@AuthViewModel.verificationId = verificationId
-                        _isLoading.value = false
-                        _isCodeSent.value = true
-                        _error.value = "Verification code sent."
+                        _uiState.value = _uiState.value.copy(isLoading = false, isCodeSent = true, verificationId = verificationId, error = "Verification code sent.")
                     }
                 })
                 .build()
@@ -247,25 +231,23 @@ class AuthViewModel @Inject constructor(
             PhoneAuthProvider.verifyPhoneNumber(options)
             phoneVerificationTimeoutJob = viewModelScope.launch {
                 delay(PHONE_VERIFICATION_TIMEOUT_MS)
-                if (_isLoading.value && !_isCodeSent.value) {
+                if (_uiState.value.isLoading && !_uiState.value.isCodeSent) {
                     Log.w("AuthViewModel", "Phone verification timed out")
-                    _isLoading.value = false
-                    _error.value = "Phone verification timed out. This could be due to network issues or your SMS quota. Please try again later."
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Phone verification timed out. This often means Firebase SMS services are not configured correctly.")
                 }
             }
         }
-            .onFailure {
-                Log.e("AuthViewModel", "Could not start phone verification", it)
+            .onFailure { exception ->
+                Log.e("AuthViewModel", "Could not start phone verification", exception)
                 phoneVerificationTimeoutJob?.cancel()
-                _isLoading.value = false
-                _error.value = it.message ?: "Could not start phone verification."
+                _uiState.value = _uiState.value.copy(isLoading = false, error = exception.message ?: "Could not start phone verification.")
             }
     }
 
     fun verifyCode(code: String) {
-        val vid = verificationId
+        val vid = _uiState.value.verificationId
         if ((vid == null) || code.isBlank()) {
-            _error.value = "Request a verification code first."
+            _uiState.value = _uiState.value.copy(error = "Request a verification code first.")
             return
         }
         val credential = PhoneAuthProvider.getCredential(vid, code)
@@ -274,41 +256,44 @@ class AuthViewModel @Inject constructor(
 
     fun cancelPhoneVerification() {
         phoneVerificationTimeoutJob?.cancel()
-        verificationId = null
-        _isCodeSent.value = false
-        _isLoading.value = false
+        _uiState.value = _uiState.value.copy(isCodeSent = false, verificationId = null, isLoading = false)
     }
 
     fun resetPassword(email: String) {
         val normalizedEmail = email.trim()
         if (!EMAIL_PATTERN.matches(normalizedEmail)) {
-            _error.value = "Enter your email address first."
+            _uiState.value = _uiState.value.copy(error = "Enter your email address first.")
             return
         }
 
         viewModelScope.launch {
             Log.d("AuthViewModel", "Password reset requested for $normalizedEmail")
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                if (!isFirebaseConfigured) {
+                    throw Exception("Firebase is not configured.")
+                }
+
                 val result = withTimeout(AUTH_TIMEOUT_MS) {
                     authRepository.sendPasswordReset(normalizedEmail)
                 }
-                _error.value = if (result.isSuccess) {
+                val msg = if (result.isSuccess) {
                     Log.d("AuthViewModel", "Password reset link sent")
                     "If an account exists for this email, a reset link has been sent."
                 } else {
-                    Log.w("AuthViewModel", "Password reset failed: ${result.exceptionOrNull()?.message}")
-                    result.exceptionOrNull()?.message ?: "Could not request a password reset."
+                    val errorMsg = result.exceptionOrNull()?.message ?: "Could not request a password reset."
+                    Log.w("AuthViewModel", "Password reset failed: $errorMsg")
+                    errorMsg
                 }
-            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                _uiState.value = _uiState.value.copy(error = msg)
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Password reset timed out")
-                _error.value = "Password reset request timed out. Please check your connection and try again."
+                _uiState.value = _uiState.value.copy(error = "Password reset request timed out.")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Password reset exception", e)
-                _error.value = e.message ?: "Could not request a password reset."
+                _uiState.value = _uiState.value.copy(error = e.message ?: "Could not request a password reset.")
             } finally {
-                _isLoading.value = false
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }
@@ -316,28 +301,27 @@ class AuthViewModel @Inject constructor(
     private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
         viewModelScope.launch {
             Log.d("AuthViewModel", "Signing in with phone credential")
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val result = withTimeout(AUTH_TIMEOUT_MS) {
                     authRepository.signInWithCredential(credential)
                 }
                 if (result.isFailure) {
-                    Log.w("AuthViewModel", "Phone sign in failed: ${result.exceptionOrNull()?.message}")
-                    _error.value = result.exceptionOrNull()?.message ?: "Phone sign-in failed"
+                    val message = result.exceptionOrNull()?.message ?: "Phone sign-in failed"
+                    Log.w("AuthViewModel", "Phone sign in failed: $message")
+                    _uiState.value = _uiState.value.copy(error = message)
                 } else {
                     Log.d("AuthViewModel", "Phone sign in successful")
+                    _uiState.value = _uiState.value.copy(isCodeSent = false)
                 }
-                // Note: AuthRepository listens to auth state changes, so it will update currentUser automatically
-                _isCodeSent.value = false
-            } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 Log.e("AuthViewModel", "Phone sign in timed out")
-                _error.value = "Phone sign-in timed out. Please check your connection and try again."
+                _uiState.value = _uiState.value.copy(error = "Phone sign-in timed out. Check your connection.")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Phone sign in exception", e)
-                _error.value = e.message ?: "Phone sign-in failed"
+                _uiState.value = _uiState.value.copy(error = e.message ?: "Phone sign-in failed")
             } finally {
-                _isLoading.value = false
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

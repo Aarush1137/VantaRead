@@ -77,6 +77,10 @@ fun MainNavigation() {
         if (currentUser == null && !continuedAsGuest && currentRoute !is Auth) {
             backStack.clear()
             backStack.add(Auth)
+        } else if (currentUser != null && currentRoute is Auth) {
+            continuedAsGuest = false
+            backStack.clear()
+            backStack.add(Library)
         }
     }
     

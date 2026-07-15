@@ -38,6 +38,9 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
     )
     val defaultSource: StateFlow<String> = _defaultSource.asStateFlow()
 
+    private val _storageUri = MutableStateFlow(prefs.getString("storage_uri", null))
+    val storageUri: StateFlow<String?> = _storageUri.asStateFlow()
+
     private fun loadSettings(): ReaderSettings {
         val themeName = prefs.getString("theme", ReaderTheme.VANTA_BLACK.name) ?: ReaderTheme.VANTA_BLACK.name
         val fontName = prefs.getString("font", ReaderFont.SERIF.name) ?: ReaderFont.SERIF.name
@@ -76,6 +79,11 @@ class ReaderPreferencesManager @Inject constructor(@ApplicationContext context: 
         val normalized = SourceCatalog.normalize(sourceId)
         prefs.edit().putString("default_source", normalized).apply()
         _defaultSource.value = normalized
+    }
+
+    fun setStorageUri(uri: String?) {
+        prefs.edit().putString("storage_uri", uri).apply()
+        _storageUri.value = uri
     }
 
     private val _batchDownloadAmount = MutableStateFlow(prefs.getInt("batch_download", 0))

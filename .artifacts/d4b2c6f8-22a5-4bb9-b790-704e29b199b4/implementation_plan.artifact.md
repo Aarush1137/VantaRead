@@ -1,64 +1,70 @@
-# Implementation Plan - Auth Fixes, TTS Voices, and Reader Bookmarks
+# Implementation Plan - Custom Storage Path & Content Offloading
 
-The user reports that all sign-in methods are "stuck" and requests more voices and new features (Reader Bookmarks).
+This plan introduces the ability for users to define a custom storage location (Internal or External/SD Card) for their downloaded light novels. This offloads large HTML content from the SQLite database to the file system, improving app performance and allowing users to manage their device storage better.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Firebase Configuration**: If sign-in is "stuck" without an error message, it often indicates a network issue or a missing/misconfigured `google-services.json`. I will improve error reporting and timeout handling to make this clearer.
+> **Storage Permissions**: Selecting an external folder (like on an SD card) requires the user to grant persistent folder access via the Android System Picker. The app will use Scoped Storage APIs to ensure compatibility with modern Android versions.
+
+> [!WARNING]
+> **Data Migration**: When changing the storage path, existing downloaded chapters will need to be moved. I will implement an automatic migration process to ensure no data is lost.
 
 ## Proposed Changes
 
-### Auth Fixes
+### Core Storage Logic
 
-#### [MODIFY] [AuthRepository.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/repository/AuthRepository.kt)
-- Update `signIn`, `signUp`, and `signInWithCredential` to rethrow `CancellationException`. This ensures that `withTimeout` in the ViewModel triggers correctly.
+#### [NEW] [VantaStorageManager.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/util/VantaStorageManager.kt)
+- Manage the base directory URI for novel content.
+- Implement `saveChapter(novelUrl, chapterUrl, content)` and `loadChapter(novelUrl, chapterUrl)`.
+- Use `DocumentFile` for Scoped Storage compatibility.
+- Implement `migrateData(oldUri, newUri)` to move files.
 
-#### [MODIFY] [AuthViewModel.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/auth/AuthViewModel.kt)
-- Improve error messages for timeouts.
-- Ensure `isLoading` is consistently reset even on unexpected failures.
-- Add more granular logging for debugging sign-in steps.
-
----
-
-### TTS Improvements
-
-#### [MODIFY] [ReaderViewModel.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/reader/ReaderViewModel.kt)
-- Add a "Premium/Network" voice filter or better grouping in `refreshTtsVoices`.
-- Store the selected voice more reliably in preferences.
-
-#### [MODIFY] [ReaderScreen.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/reader/ReaderScreen.kt)
-- Improve the voice selection menu to include search or categorization if the list is long.
+#### [MODIFY] [ReaderPreferencesManager.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/prefs/ReaderPreferencesManager.kt)
+- Add `storageUri` preference (stores the string representation of the URI).
+- Add `setStorageUri(uri: String)`.
 
 ---
 
-### New Feature: Reader Bookmarks
-
-#### [NEW] [BookmarkEntity.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/db/BookmarkEntity.kt)
-- Define a new entity for per-chapter bookmarks (page/paragraph index, label, timestamp).
-
-#### [MODIFY] [AppDatabase.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/db/AppDatabase.kt)
-- Add the new Bookmark table.
+### Data Layer Integration
 
 #### [MODIFY] [NovelRepository.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/data/repository/NovelRepository.kt)
-- Add methods to save/delete/fetch chapter-specific bookmarks.
+- Update `getChapterContent` to check `VantaStorageManager` first.
+- Update `fetchAndCacheChapters` and `prefetchChapter` to save content using the manager.
+- Implement a background migration task that moves content from the `chapters` table to the file system.
 
-#### [MODIFY] [ReaderViewModel.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/reader/ReaderViewModel.kt)
-- Expose a flow of bookmarks for the current chapter.
-- Add `addBookmark(paragraphIndex: Int, label: String)` and `deleteBookmark(id: Long)`.
+#### [MODIFY] [ChapterDownloadWorker.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/worker/ChapterDownloadWorker.kt)
+- Update `doWork` to save the downloaded HTML via `VantaStorageManager`.
+- Update the DB record to set `isDownloaded = true` but leave `content = null` (referencing the file instead).
 
-#### [MODIFY] [ReaderScreen.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/reader/ReaderScreen.kt)
-- Add a "Bookmark" icon to the HUD.
-- Show a list of bookmarks for the current chapter in a side sheet or bottom sheet.
-- Allow one-tap navigation to a bookmarked paragraph.
+---
+
+### UI & Settings
+
+#### [MODIFY] [SettingsViewModel.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/settings/SettingsViewModel.kt)
+- Expose `currentStoragePath` StateFlow.
+- Add `updateStorageLocation(uri: Uri)` and handle persistent permission requests.
+- Track migration progress.
+
+#### [MODIFY] [SettingsScreen.kt](file:///C:/Users/aarus/.gemini/antigravity/scratch/VantaRead/app/src/main/java/com/example/vantaread/ui/settings/SettingsScreen.kt)
+- Add a new "Storage" section.
+- Display the current storage path (Internal vs. Custom Folder).
+- Add a "Change Location" button that launches the folder picker.
+- Add a progress indicator for data migration if active.
+
+---
+
+### Bonus Optimization: Cover Caching
+- Update the storage logic to also cache novel covers in the custom path, making the entire library available offline without relying on Coil's transient cache.
 
 ## Verification Plan
 
 ### Automated Tests
-- `gradlew :app:testDebugUnitTest` to verify repository and ViewModel logic.
+- Unit tests for `VantaStorageManager` to verify file naming and path resolution.
+- Test migration logic with mock URIs.
 
 ### Manual Verification
-- Deploy to device and test all sign-in methods (Google, Email, Phone).
-- Verify that timeout error appears after 30 seconds if network is blocked.
-- Test adding and navigating to bookmarks in the reader.
-- Test switching between different TTS voices.
+1. **Change Path**: Select a custom folder on internal storage.
+2. **Download**: Download a novel and verify files appear in the selected folder.
+3. **Move Path**: Change the folder again and verify that previously downloaded chapters are moved and still readable.
+4. **Offline Mode**: Turn off the internet and verify that chapters stored in the custom path load correctly in the reader.

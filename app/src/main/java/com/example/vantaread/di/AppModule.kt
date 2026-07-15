@@ -14,6 +14,7 @@ import com.example.vantaread.data.source.novelfull.NovelFullSource
 import com.example.vantaread.data.source.royalroad.RoyalRoadSource
 import com.example.vantaread.data.source.freewebnovel.FreeWebNovelSource
 import com.example.vantaread.data.source.scribblehub.ScribbleHubSource
+import com.example.vantaread.data.source.boxnovel.BoxNovelSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,13 +70,15 @@ object AppModule {
         val lightNovelPubSource = LightNovelPubSource(context)
         val freeWebNovelSource = FreeWebNovelSource(context)
         val scribbleHubSource = ScribbleHubSource(context)
+        val boxNovelSource = BoxNovelSource(context)
         
         return mapOf(
             novelFullSource.sourceId to novelFullSource,
             royalRoadSource.sourceId to royalRoadSource,
             lightNovelPubSource.sourceId to lightNovelPubSource,
             freeWebNovelSource.sourceId to freeWebNovelSource,
-            scribbleHubSource.sourceId to scribbleHubSource
+            scribbleHubSource.sourceId to scribbleHubSource,
+            boxNovelSource.sourceId to boxNovelSource
         )
     }
 
@@ -85,8 +88,9 @@ object AppModule {
         sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>,
         novelDao: NovelDao,
         readingHistoryDao: ReadingHistoryDao,
-        bookmarkDao: BookmarkDao
+        bookmarkDao: BookmarkDao,
+        storageManager: com.example.vantaread.data.util.VantaStorageManager
     ): NovelRepository {
-        return NovelRepository(sources, novelDao, readingHistoryDao, bookmarkDao)
+        return NovelRepository(sources, novelDao, readingHistoryDao, bookmarkDao, storageManager)
     }
 }

@@ -12,9 +12,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
@@ -37,16 +42,12 @@ fun AuthScreen(
     var verificationCode by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var isSignUp by remember { mutableStateOf(false) }
-    var usePhoneAuth by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Email, 1: Phone
 
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val isCodeSent by viewModel.isCodeSent.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
     
     val context = LocalContext.current
-    // The Google Services Gradle plugin generates this from the local, git-ignored
-    // google-services.json. getIdentifier keeps no-Firebase builds usable in guest mode.
     val googleWebClientId = remember(context) {
         context.resources
             .getIdentifier("default_web_client_id", "string", context.packageName)
@@ -54,6 +55,7 @@ fun AuthScreen(
             ?.let { context.getString(it) }
             ?.takeIf { it.isNotBlank() }
     }
+    
     val googleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -80,54 +82,212 @@ fun AuthScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
             if (currentUser != null) {
+                // Signed in state (already handled by LaunchedEffect, but good for safety)
                 Text("Signed in", style = MaterialTheme.typography.headlineSmall)
                 Text(
                     currentUser?.displayName ?: currentUser?.email ?: currentUser?.phoneNumber ?: "VantaRead account",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = { viewModel.syncBookmarks() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Sync Bookmarks to Cloud")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { viewModel.syncBookmarksFromCloud() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Restore Bookmarks from Cloud")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = { viewModel.signOut() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Sign Out")
                 }
             } else {
                 Text(
-                    if (usePhoneAuth) "Phone Sign In" else if (isSignUp) "Create Account" else "Welcome Back",
-                    style = MaterialTheme.typography.headlineMedium
+                    text = if (isSignUp) "Create Account" else "Welcome Back",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                if (!viewModel.isFirebaseConfigured) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (isSignUp) "Sign up to sync your bookmarks across devices" else "Sign in to access your cloud-synced library",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                if (!uiState.isFirebaseConfigured) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Firebase Not Configured",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Account features require a local app/google-services.json file. Check the project README for setup instructions.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                PrimaryTabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0; viewModel.clearMessage() },
+                        text = { Text("Email") }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1; viewModel.clearMessage() },
+                        text = { Text("Phone") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                uiState.error?.let { message ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     ) {
                         Text(
-                            text = "Account features are not configured in this build. Add the local app/google-services.json file to enable them; it is ignored by Git.",
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            text = message,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
-                if (viewModel.isFirebaseConfigured) {
-                    Spacer(modifier = Modifier.height(32.dp))
-                Button(
+
+                if (selectedTab == 0) {
+                    // Email Auth
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        trailingIcon = {
+                            val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = null)
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = { viewModel.submitEmailPassword(email, password, isSignUp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading && uiState.isFirebaseConfigured
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        } else {
+                            Text(if (isSignUp) "Create Account" else "Sign In")
+                        }
+                    }
+                } else {
+                    // Phone Auth
+                    if (uiState.isCodeSent) {
+                        OutlinedTextField(
+                            value = verificationCode,
+                            onValueChange = { verificationCode = it },
+                            label = { Text("6-digit Verification Code") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { viewModel.verifyCode(verificationCode) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isLoading && verificationCode.length == 6
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            } else {
+                                Text("Verify & Continue")
+                            }
+                        }
+                        TextButton(onClick = { viewModel.cancelPhoneVerification() }) {
+                            Text("Use a different number")
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = phoneNumber,
+                            onValueChange = { phoneNumber = it },
+                            label = { Text("Phone Number (with country code)") },
+                            placeholder = { Text("+91 9876543210") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                val activity = context as? Activity
+                                if (activity != null) viewModel.verifyPhoneNumber(phoneNumber, activity)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isLoading && uiState.isFirebaseConfigured
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            } else {
+                                Text("Send Verification Code")
+                            }
+                        }
+                    }
+                }
+
+                if (selectedTab == 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { isSignUp = !isSignUp; viewModel.clearMessage() }) {
+                            Text(if (isSignUp) "Already have an account?" else "Create new account")
+                        }
+                        if (!isSignUp) {
+                            TextButton(onClick = { viewModel.resetPassword(email) }) {
+                                Text("Forgot password?")
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Third-party Auth
+                HorizontalDivider(modifier = Modifier.padding(bottom = 24.dp))
+                
+                OutlinedButton(
                     onClick = {
-                        if (!viewModel.isFirebaseConfigured) {
-                            viewModel.showMessage("Google sign-in requires a local app/google-services.json. This file stays out of Git.")
-                        } else if (googleWebClientId == null) {
-                            viewModel.showMessage("The Firebase config has no web OAuth client. Enable Google sign-in in Firebase, then download a fresh google-services.json.")
+                        if (googleWebClientId == null) {
+                            viewModel.showMessage("Google sign-in client ID not found in resources.")
                         } else {
                             val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                                 .requestIdToken(googleWebClientId)
@@ -138,141 +298,17 @@ fun AuthScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading && viewModel.isFirebaseConfigured
+                    enabled = !uiState.isLoading && uiState.isFirebaseConfigured
                 ) {
                     Icon(Icons.Filled.AccountCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Continue with Google")
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                if (usePhoneAuth) {
-                    if (isCodeSent) {
-                        OutlinedTextField(
-                            value = verificationCode,
-                            onValueChange = { verificationCode = it },
-                            label = { Text("Verification Code") },
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Button(
-                            onClick = { viewModel.verifyCode(verificationCode) },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading && verificationCode.isNotBlank()
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            } else {
-                                Text("Verify Code")
-                            }
-                        }
-                    } else {
-                        OutlinedTextField(
-                            value = phoneNumber,
-                            onValueChange = { phoneNumber = it },
-                            label = { Text("Phone Number (e.g. +91...)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Button(
-                            onClick = { 
-                                val activity = context as? Activity
-                                if (activity != null) {
-                                    viewModel.verifyPhoneNumber(phoneNumber, activity)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading && phoneNumber.isNotBlank()
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            } else {
-                                Text("Send Verification Code")
-                            }
-                        }
-                    }
-                } else {
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Button(
-                        onClick = {
-                            viewModel.submitEmailPassword(email, password, isSignUp)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading && viewModel.isFirebaseConfigured && email.isNotBlank() && password.isNotBlank()
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        } else {
-                            Text(if (isSignUp) "Sign Up" else "Sign In")
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (!isSignUp) {
-                        TextButton(
-                            onClick = { viewModel.resetPassword(email) },
-                            enabled = !isLoading && viewModel.isFirebaseConfigured
-                        ) {
-                            Text("Forgot password?")
-                        }
-                    }
-                    
-                    TextButton(onClick = {
-                        isSignUp = !isSignUp
-                        viewModel.clearMessage()
-                    }) {
-                        Text(if (isSignUp) "Already have an account? Sign In" else "Don't have an account? Sign Up")
-                    }
-                }
-
-                error?.let { message ->
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(message, color = MaterialTheme.colorScheme.error)
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                TextButton(onClick = {
-                    usePhoneAuth = !usePhoneAuth
-                    verificationCode = ""
-                    viewModel.cancelPhoneVerification()
-                    viewModel.clearMessage()
-                }) {
-                    Text(if (usePhoneAuth) "Use Email/Password instead" else "Sign in with Phone Number")
-                }
-                }
-
                 TextButton(onClick = onContinueAsGuest) {
-                    Text("Continue without account")
+                    Text("Continue without account (Guest Mode)")
                 }
             }
         }

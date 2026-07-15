@@ -15,6 +15,7 @@ import androidx.work.Data
 import androidx.work.WorkerParameters
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.repository.NovelRepository
+import com.example.vantaread.data.util.VantaStorageManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +26,8 @@ class ChapterDownloadWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted workerParams: WorkerParameters,
     private val novelRepository: NovelRepository,
-    private val novelDao: NovelDao
+    private val novelDao: NovelDao,
+    private val storageManager: VantaStorageManager
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -84,9 +86,11 @@ class ChapterDownloadWorker @AssistedInject constructor(
                 return@withContext Result.retry()
             }
             
-            // Update database
+            // Update database and file storage
+            storageManager.saveChapter(novelUrl, chapterUrl, content)
+            
             val updatedChapter = chapterEntity.copy(
-                content = content,
+                content = null, // Offload from DB
                 isDownloaded = true
             )
             novelDao.insertChapter(updatedChapter)

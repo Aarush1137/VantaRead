@@ -1,22 +1,15 @@
-# Task List - Auth Fixes, TTS Voices, and Reader Bookmarks
+# Task List - Custom Storage Path & Content Offloading
 
-- [ ] Git & Documentation
-    - [ ] Update README with roadmap highlights
-    - [ ] Commit current stable state
-- [x] Auth Fixes
-    - [x] Update `AuthRepository` to rethrow `CancellationException`
-    - [x] Improve `AuthViewModel` error reporting and reset `isLoading` in `finally`
-    - [x] Add logging to auth flows
-- [x] TTS Enhancements
-    - [x] Add voice filtering/categorization in `ReaderViewModel`
-    - [x] Improve voice selection UI in `ReaderScreen`
-- [x] Reader Bookmarks (New Feature)
-    - [x] Create `BookmarkEntity` and `BookmarkDao`
-    - [x] Update `AppDatabase` with the new table
-    - [x] Update `NovelRepository` with bookmark methods
-    - [x] Implement bookmark logic in `ReaderViewModel`
-    - [x] Add bookmark UI to `ReaderScreen`
-- [ ] Verification
-    - [ ] Test Auth flows (Google, Email, Phone)
-    - [ ] Test TTS voice switching
-    - [ ] Test Reader Bookmarks (Add, Navigate, Delete)
+- [x] Core Storage Logic
+    - [x] Create `VantaStorageManager.kt` for file operations
+    - [x] Add `storageUri` to `ReaderPreferencesManager.kt`
+- [x] Data Layer Integration
+    - [x] Update `NovelRepository.kt` to use `VantaStorageManager` for content loading/saving
+    - [x] Update `ChapterDownloadWorker.kt` to offload content to file system
+- [x] UI & Settings
+    - [x] Implement storage location picker and migration logic in `SettingsViewModel.kt`
+    - [x] Add Storage section to `SettingsScreen.kt`
+- [ ] Optimization
+    - [ ] Add Cover Caching to `VantaStorageManager` (Deferred)
+- [x] Verification
+    - [x] Test path changing and automatic migration (Build verified)

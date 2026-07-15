@@ -175,6 +175,7 @@ class ReaderViewModel @Inject constructor(
                     coverUrl = novel?.coverUrl ?: ""
                 )
 
+                prefetchNextChapters()
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "Chapter load error", e)
                 _content.value = "Failed to load chapter content."
@@ -193,6 +194,23 @@ class ReaderViewModel @Inject constructor(
                 _currentChapterIndex.value = index
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "Failed to load chapter list", e)
+            }
+        }
+    }
+
+    private fun prefetchNextChapters() {
+        viewModelScope.launch {
+            val chapterList = _chapters.value
+            val currentIndex = _currentChapterIndex.value
+            if (currentIndex == -1 || chapterList.isEmpty()) return@launch
+
+            // Prefetch next 2 chapters
+            for (i in 1..2) {
+                val nextIndex = currentIndex + i
+                if (nextIndex in chapterList.indices) {
+                    val nextChapter = chapterList[nextIndex]
+                    novelRepository.prefetchChapter(nextChapter.url, sourceId)
+                }
             }
         }
     }

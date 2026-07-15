@@ -28,9 +28,10 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 * **Quick Chapter Advance:** Pull upward at the end of a chapter to open the next one.
 
 ### Account & Cloud Sync
-* **Startup Account Prompt:** Signed-out readers are greeted with email, account creation, Google, phone, and guest options on launch.
+* **Startup Account Prompt:** Signed-out readers are greeted with a modern tabbed authentication UI featuring email, account creation, Google, phone, and guest options on launch.
+* **Configuration Debugger:** (New) The app now performs a resource-aware "pre-flight" check for `google-services.json`. It explicitly warns if configuration is missing, preventing hangs and timeouts.
 * **Profile Section:** View account state, bookmark counts, reading progress, offline chapters, and cloud sync actions from a dedicated Profile tab.
-* **Firebase Authentication:** Sign in with email/password or phone verification.
+* **Firebase Authentication:** Sign in with email/password or phone verification. Robust re-implementation with better error reporting and timeout handling.
 * **Google Sign-In Ready:** Google auth is wired through Firebase using a local `google_web_client_id` resource so secrets stay out of Git.
 * **Private Bookmark Sync:** Back up and restore bookmarked novels across devices. Sync uses stable IDs, removes stale cloud bookmarks, and safely handles libraries larger than Firestore's 500-write batch limit.
 * **Secure Rules:** `firestore.rules` scopes bookmark access strictly to the authenticated user.

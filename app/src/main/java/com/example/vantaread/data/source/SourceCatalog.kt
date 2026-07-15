@@ -12,6 +12,7 @@ object SourceCatalog {
     const val LIGHT_NOVEL_PUB = "lightnovelpub"
     const val FREE_WEB_NOVEL = "freewebnovel"
     const val SCRIBBLE_HUB = "scribblehub"
+    const val BOX_NOVEL = "boxnovel"
 
     const val DEFAULT_SOURCE_ID = ROYAL_ROAD
 
@@ -20,7 +21,8 @@ object SourceCatalog {
         SourceInfo(NOVEL_FULL, "NovelFull", listOf("novelfull.com")),
         SourceInfo(LIGHT_NOVEL_PUB, "LightNovelPub", listOf("lightnovelpub.me", "lightnovelpub.com", "lightnovelpub.vip")),
         SourceInfo(FREE_WEB_NOVEL, "FreeWebNovel", listOf("freewebnovel.com")),
-        SourceInfo(SCRIBBLE_HUB, "ScribbleHub", listOf("scribblehub.com"))
+        SourceInfo(SCRIBBLE_HUB, "ScribbleHub", listOf("scribblehub.com")),
+        SourceInfo(BOX_NOVEL, "BoxNovel", listOf("boxnovel.com"))
     )
 
     fun normalize(sourceId: String): String {
@@ -29,6 +31,7 @@ object SourceCatalog {
             "free_web_novel", "free-web-novel" -> FREE_WEB_NOVEL
             "scribble_hub", "scribble-hub" -> SCRIBBLE_HUB
             "light_novel_pub", "light-novel-pub" -> LIGHT_NOVEL_PUB
+            "box_novel", "box-novel" -> BOX_NOVEL
             else -> sourceId.trim().lowercase()
         }
     }

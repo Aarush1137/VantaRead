@@ -13,6 +13,7 @@ import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.SourceCatalog
+import com.example.vantaread.data.util.VantaStorageManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +31,8 @@ class NovelRepository @Inject constructor(
     private val sources: Map<String, @JvmSuppressWildcards NovelSource>,
     private val novelDao: NovelDao,
     private val readingHistoryDao: ReadingHistoryDao,
-    private val bookmarkDao: BookmarkDao
+    private val bookmarkDao: BookmarkDao,
+    private val storageManager: VantaStorageManager
 ) {
     private data class CachedSuggestionSource(
         val novels: List<Novel>,
@@ -149,6 +151,15 @@ class NovelRepository @Inject constructor(
             getSource(resolvedSourceId).getNovelDetails(novelUrl)
         } ?: throw IllegalStateException("Timed out loading novel details from ${SourceCatalog.nameFor(resolvedSourceId)}.")
         
+        // Try to cache cover if available
+        if (details.coverUrl.isNotBlank()) {
+            try {
+                // We'd need an image loader or simple HTTP client to get bytes here.
+                // For now, we'll stick to content caching and maybe add cover caching later 
+                // if we add a network client to the repository.
+            } catch (_: Exception) {}
+        }
+
         val existing = novelDao.getNovel(novelUrl)
         novelDao.insertNovel(
             NovelEntity(
@@ -211,16 +222,68 @@ class NovelRepository @Inject constructor(
     suspend fun getChapterContent(chapterUrl: String, sourceId: String): String {
         val resolvedSourceId = SourceCatalog.detectSourceId(chapterUrl) ?: SourceCatalog.normalize(sourceId)
         val chapterEntity = novelDao.getChapter(chapterUrl)
+        
+        // Try file storage first
+        val storedContent = storageManager.loadChapter(chapterEntity?.novelUrl ?: "", chapterUrl)
+        if (!storedContent.isNullOrBlank()) {
+            return storedContent
+        }
+
+        // Fallback to DB (Legacy or downloaded before path change)
         if (chapterEntity?.isDownloaded == true && !chapterEntity.content.isNullOrBlank()) {
+            // Auto-migrate this chapter to file storage
+            storageManager.saveChapter(chapterEntity.novelUrl, chapterUrl, chapterEntity.content)
             return chapterEntity.content
         }
+
         return try {
             withTimeoutOrNull(sourceOperationTimeoutMillis) {
-                getSource(resolvedSourceId).getChapterContent(chapterUrl)
+                val content = getSource(resolvedSourceId).getChapterContent(chapterUrl)
+                // If it's a regular read (not download), we don't necessarily save to disk 
+                // unless we want to cache everything. Let's cache it if it's long enough.
+                if (content.length > 1000 && !chapterUrl.contains("error")) {
+                    storageManager.saveChapter(chapterEntity?.novelUrl ?: "", chapterUrl, content)
+                }
+                content
             } ?: "Timed out loading chapter content from ${SourceCatalog.nameFor(resolvedSourceId)}."
         } catch (e: Exception) {
             "Error loading chapter content: ${e.message}"
         }
+    }
+
+    suspend fun prefetchChapter(chapterUrl: String, sourceId: String) {
+        val resolvedSourceId = SourceCatalog.detectSourceId(chapterUrl) ?: SourceCatalog.normalize(sourceId)
+        val chapterEntity = novelDao.getChapter(chapterUrl)
+        
+        // Check if already in storage
+        val storedContent = storageManager.loadChapter(chapterEntity?.novelUrl ?: "", chapterUrl)
+        if (!storedContent.isNullOrBlank()) return
+
+        // Check if already in DB
+        if (chapterEntity != null && !chapterEntity.content.isNullOrBlank()) {
+            storageManager.saveChapter(chapterEntity.novelUrl, chapterUrl, chapterEntity.content)
+            return
+        }
+
+        try {
+            withTimeoutOrNull(sourceOperationTimeoutMillis) {
+                val content = getSource(resolvedSourceId).getChapterContent(chapterUrl)
+                if (content.length > 500) { // Basic sanity check
+                    storageManager.saveChapter(chapterEntity?.novelUrl ?: "", chapterUrl, content)
+                    
+                    // Mark as downloaded in DB if it was a prefetch of a known chapter
+                    if (chapterEntity != null) {
+                        novelDao.insertChapter(chapterEntity.copy(isDownloaded = true))
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Silently fail for prefetch
+        }
+    }
+
+    fun setStorageUri(uri: String?) {
+        storageManager.setBaseUri(uri)
     }
 
     // --- Local DB Calls ---
