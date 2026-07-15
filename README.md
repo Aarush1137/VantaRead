@@ -1,45 +1,37 @@
 # 📖 VantaRead
 
-VantaRead is a modern Android light novel and web novel reader built with **Kotlin**, **Jetpack Compose**, and **Material 3**. It is designed with a plugin-based architecture, allowing support for multiple novel sources while providing a clean, customizable reading experience.
+VantaRead is a modern Android light novel and web novel reader built with **Kotlin**, **Jetpack Compose**, and **Material 3**. It is designed with a plugin-based architecture, allowing support for multiple novel sources while providing a clean, customizable reading experience. 
 
-> **Project Status:** 🚀 Under Active Development (Phase 1 Completed)
+It features an intelligent **headless WebView scraper** designed to bypass Cloudflare Bot Protection seamlessly, allowing you to read from top sites without missing a beat!
+
+> **Project Status:** 🚀 Actively Maintained & Fully Functional!
 
 ---
 
 ## ✨ Features
 
-### 📚 Personal Library
+### 📚 Personal Library & Offline Downloads
+* **Local Library:** Bookmark favorite novels for easy access and tracking.
+* **Offline Reading:** Download individual chapters or entire novels for offline reading using a robust WorkManager implementation.
+* **Grouped Downloads Screen:** Beautifully organized accordion UI grouping all your downloaded chapters by novel.
 
-* Save novels to your local library
-* Bookmark favorite novels for easy access
-* Offline metadata storage (via Room DB)
+### 👓 The Reader
+* **Distraction-Free Interface:** Edge-to-edge Material 3 reading screen with full customization (adjustable font sizes, margins, fonts, and themes including pure AMOLED Vanta Black).
+* **Reading Progress:** Automatically saves your scroll position.
+* **Auto-Scroll:** Kick back and relax! Toggle auto-scrolling with an adjustable speed slider.
+* **Smart Navigation:** Tap zones (left/right) to navigate chapters, overlay HUDs, and seamless prev/next chapter transitions.
 
-### 🔍 Discover & Search
-
-* Search novels from supported sources seamlessly
-* Real-time search grid with high-quality cover art
-* Primary Source: **Royal Road** (Fast, reliable, and no Cloudflare CAPTCHAs)
-
-### 📖 Novel Details
-
-* Cover artwork and genre tags
-* Author information and publication status
-* Synopsis description
-* Scrollable chapter list with instant reading access
-
-### 👓 Reader
-
-* Clean distraction-free reading interface
-* Edge-to-edge Material 3 design
-* Light and Dark themes (including pure AMOLED Vanta Black)
-* Adjustable font size and margins
-* Custom accent colors
+### 🔍 Discovery & Sources
+* **Multi-Source Support:** Read from NovelFull, LightNovelPub, WTR-Lab, and Royal Road.
+* **Advanced Web Scraper:** Utilizes native Jsoup for speed, falling back to a headless Android `WebView` that evaluates JS challenges to seamlessly bypass strict Cloudflare Bot Protection (WAF). 
+* **Chapter Synthesis:** Instantly calculates chapters for paginated novels (500+ chapters load instantly without UI freezing).
+* **Add Via URL:** Instantly import any supported novel directly from its URL.
 
 ---
 
 ## 🏗️ Architecture
 
-The project follows a modern Android architecture with clear separation of concerns using Jetpack Navigation 3.0.
+The project follows a modern Android architecture with clear separation of concerns using **Jetpack Navigation 3.0**.
 
 ```
 UI (Jetpack Compose / NavDisplay)
@@ -54,29 +46,19 @@ UI (Jetpack Compose / NavDisplay)
  └─────────────────────────┘
 ```
 
-The repository acts as the single source of truth, combining local storage with online content providers.
+The repository acts as the single source of truth, combining local SQLite storage (Room) with online content providers, tracking your reading history, and managing active offline downloads.
 
 ---
 
 ## 🔌 Source Plugin System
 
-VantaRead uses a modular plugin architecture so that multiple novel sources can be added without changing the core application.
-
-Each source implements a common interface:
-
-```kotlin
-interface NovelSource {
-    suspend fun searchNovels(query: String): List<Novel>
-    suspend fun getPopularNovels(): List<Novel>
-    suspend fun getNovelDetails(novelUrl: String): NovelDetails
-    suspend fun getChapterList(novelUrl: String): List<Chapter>
-    suspend fun getChapterContent(chapterUrl: String): String
-}
-```
+VantaRead uses a modular plugin architecture so that multiple novel sources can be added without changing the core application. Each source implements a common `NovelSource` interface.
 
 Current Implemented Sources:
-1. **Royal Road (Default):** Highly reliable for searching and reading without bot-protection blocks.
-2. **NovelFull / WTR-Lab:** Included as experimental sources (Note: Subject to Cloudflare challenges).
+1. **LightNovelPub:** Fast, optimized with Chapter Synthesis.
+2. **NovelFull:** Optimized AJAX routing to bypass pagination.
+3. **WTR-Lab:** Direct HTML scraping.
+4. **Royal Road:** Pure Jsoup fallback.
 
 ---
 
@@ -84,43 +66,13 @@ Current Implemented Sources:
 
 * **Kotlin**
 * **Jetpack Compose & Navigation 3**
-* **Material 3**
-* **Room Database**
+* **Material 3 (Dynamic Color Support)**
+* **Room Database (SQLite)**
 * **Hilt (Dependency Injection)**
 * **Coil (Image Loading)**
-* **Jsoup (Web Scraping)**
+* **WorkManager (Background Downloads)**
+* **Jsoup & Android WebView (Web Scraping)**
 * **Coroutines & StateFlow**
-* **MVVM Architecture**
-
----
-
-## 🎯 Roadmap
-
-### Phase 1: Foundation (Completed)
-* [x] Android project setup & Compose architecture
-* [x] Jetpack Navigation 3 routing setup
-* [x] Room database local storage
-* [x] Source plugin framework (Hilt Multi-binding)
-* [x] Royal Road source integration
-* [x] Discover / Search screen
-* [x] Novel detail page
-* [x] Reader screen with Font/Theme customization
-
-### Phase 2: Progress & History (Up Next)
-* [ ] Reading history and "Continue Reading" tracking
-* [ ] Save last read page/scroll position
-* [ ] Custom tap zones for page turning (left/right/center)
-* [ ] Auto-scroll feature
-
-### Phase 3: Offline Support
-* [ ] Chapter downloading via WorkManager
-* [ ] Offline reading mode support
-* [ ] Background notifications for new chapter releases
-
-### Phase 4: Cloud & Social
-* [ ] Firebase Authentication (Email/Google)
-* [ ] Profile screen with reading statistics
-* [ ] Cloud Sync for bookmarks and history
 
 ---
 
@@ -129,7 +81,6 @@ Current Implemented Sources:
 Contributions, bug reports, feature requests, and improvements are welcome.
 
 If you'd like to contribute:
-
 1. Fork the repository.
 2. Create a feature branch.
 3. Commit your changes.
