@@ -7,6 +7,8 @@ import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -32,10 +34,25 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/list/most-popular-novels/"
-        val doc = fetchDocument(url)
+        val urls = listOf(
+            "$baseUrl/list/most-popular-novels/?page=1",
+            "$baseUrl/list/most-popular-novels/?page=2"
+        )
         
-        parseNovelList(doc).take(20)
+        val deferredDocs = urls.map { url ->
+            async {
+                runCatching { fetchDocument(url) }.getOrNull()
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll().filterNotNull()
+        val novels = mutableListOf<Novel>()
+        
+        for (doc in docs) {
+            novels.addAll(parseNovelList(doc))
+        }
+        
+        novels.take(40)
     }
 
     private fun parseNovelList(doc: Document): List<Novel> {
@@ -57,12 +74,27 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/search?keyword=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = runCatching { 
-            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
-        }.getOrElse { fetchDocument(url) }
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val urls = listOf(
+            "$baseUrl/search?keyword=$encodedQuery&page=1",
+            "$baseUrl/search?keyword=$encodedQuery&page=2"
+        )
         
-        val searchResults = parseNovelList(doc)
+        val deferredDocs = urls.map { url ->
+            async {
+                runCatching { 
+                    Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+                }.getOrElse { fetchDocument(url) }
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll()
+        val searchResults = mutableListOf<Novel>()
+        
+        for (doc in docs) {
+            searchResults.addAll(parseNovelList(doc))
+        }
+        
         if (searchResults.isNotEmpty()) return@withContext searchResults
 
         val normalizedQuery = query.trim().lowercase()

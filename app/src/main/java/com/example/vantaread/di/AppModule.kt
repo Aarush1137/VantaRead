@@ -10,7 +10,8 @@ import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.lightnovelpub.LightNovelPubSource
 import com.example.vantaread.data.source.novelfull.NovelFullSource
 import com.example.vantaread.data.source.royalroad.RoyalRoadSource
-import com.example.vantaread.data.source.wtrlab.WtrLabSource
+import com.example.vantaread.data.source.freewebnovel.FreeWebNovelSource
+import com.example.vantaread.data.source.scribblehub.ScribbleHubSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -54,13 +55,15 @@ object AppModule {
         val novelFullSource = NovelFullSource(context)
         val royalRoadSource = RoyalRoadSource(context)
         val lightNovelPubSource = LightNovelPubSource(context)
-        val wtrLabSource = WtrLabSource(context)
+        val freeWebNovelSource = FreeWebNovelSource(context)
+        val scribbleHubSource = ScribbleHubSource(context)
         
         return mapOf(
             novelFullSource.sourceId to novelFullSource,
             royalRoadSource.sourceId to royalRoadSource,
             lightNovelPubSource.sourceId to lightNovelPubSource,
-            wtrLabSource.sourceId to wtrLabSource
+            freeWebNovelSource.sourceId to freeWebNovelSource,
+            scribbleHubSource.sourceId to scribbleHubSource
         )
     }
 

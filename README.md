@@ -10,8 +10,10 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 
 ## ✨ Features
 
-### 📚 Personal Library & Offline Downloads
+### 📚 Personal Library, History & Stats
 * **Local Library:** Bookmark favorite novels for easy access and tracking.
+* **Continue Reading:** Seamlessly resume your recent novels right from the Library or History tabs.
+* **Reading Statistics:** Track your total chapters read, novels started, and your most read novel on the new Stats screen.
 * **Offline Reading:** Download individual chapters or entire novels for offline reading using a robust WorkManager implementation.
 * **Grouped Downloads Screen:** Beautifully organized accordion UI grouping all your downloaded chapters by novel.
 
@@ -22,7 +24,7 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 * **Smart Navigation:** Tap zones (left/right) to navigate chapters, overlay HUDs, and seamless prev/next chapter transitions.
 
 ### 🔍 Discovery & Sources
-* **Multi-Source Support:** Read from NovelFull, LightNovelPub, WTR-Lab, and Royal Road.
+* **Multi-Source Support:** Read from NovelFull, LightNovelPub, FreeWebNovel, ScribbleHub, and Royal Road.
 * **Advanced Web Scraper:** Utilizes native Jsoup for speed, falling back to a headless Android `WebView` that evaluates JS challenges to seamlessly bypass strict Cloudflare Bot Protection (WAF). 
 * **Chapter Synthesis:** Instantly calculates chapters for paginated novels (500+ chapters load instantly without UI freezing).
 * **Add Via URL:** Instantly import any supported novel directly from its URL.
@@ -57,8 +59,9 @@ VantaRead uses a modular plugin architecture so that multiple novel sources can 
 Current Implemented Sources:
 1. **LightNovelPub:** Fast, optimized with Chapter Synthesis.
 2. **NovelFull:** Optimized AJAX routing to bypass pagination.
-3. **WTR-Lab:** Direct HTML scraping.
-4. **Royal Road:** Pure Jsoup fallback.
+3. **FreeWebNovel:** Bypasses Cloudflare using the headless WebView scraper.
+4. **ScribbleHub:** Advanced scraper for Cloudflare and AJAX chapters.
+5. **Royal Road:** Pure Jsoup fallback.
 
 ---
 

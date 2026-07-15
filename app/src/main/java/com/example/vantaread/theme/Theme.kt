@@ -56,7 +56,17 @@ fun VantaReadTheme(
       baseColorScheme.withAccent(accent.color, darkTheme)
   }
   
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  val finalColorScheme = if (darkTheme) {
+      colorScheme.copy(
+          background = Color.Black,
+          surface = Color.Black,
+          surfaceContainer = Color.Black,
+          surfaceContainerLow = Color.Black,
+          surfaceContainerHigh = Color(0xFF111111)
+      )
+  } else colorScheme
+  
+  MaterialTheme(colorScheme = finalColorScheme, typography = Typography, content = content)
 }
 
 private fun ColorScheme.withAccent(accent: Color, darkTheme: Boolean): ColorScheme {

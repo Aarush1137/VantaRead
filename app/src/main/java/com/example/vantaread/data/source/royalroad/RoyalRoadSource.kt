@@ -6,6 +6,8 @@ import com.example.vantaread.data.model.Novel
 import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -42,38 +44,61 @@ class RoyalRoadSource(private val context: Context) : NovelSource {
     }
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/fictions/best-rated"
-        val doc = fetchDocument(url)
+        val urls = listOf(
+            "$baseUrl/fictions/best-rated?page=1",
+            "$baseUrl/fictions/best-rated?page=2"
+        )
         
+        val deferredDocs = urls.map { url ->
+            async {
+                try { fetchDocument(url) } catch (e: Exception) { null }
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll().filterNotNull()
         val novels = mutableListOf<Novel>()
-        val items = doc.select(".fiction-list-item")
         
-        for (item in items) {
-            val titleElement = item.selectFirst(".fiction-title a") ?: continue
-            val title = titleElement.text()
-            val novelUrl = absoluteUrl(titleElement.attr("href"))
-            val coverUrl = coverUrlFrom(item)
-            
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+        for (doc in docs) {
+            val items = doc.select(".fiction-list-item")
+            for (item in items) {
+                val titleElement = item.selectFirst(".fiction-title a") ?: continue
+                val title = titleElement.text()
+                val novelUrl = absoluteUrl(titleElement.attr("href"))
+                val coverUrl = coverUrlFrom(item)
+                
+                novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+            }
         }
         
         novels
     }
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/fictions/search?title=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = fetchDocument(url)
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val urls = listOf(
+            "$baseUrl/fictions/search?title=$encodedQuery&page=1",
+            "$baseUrl/fictions/search?title=$encodedQuery&page=2"
+        )
         
+        val deferredDocs = urls.map { url ->
+            async {
+                try { fetchDocument(url) } catch (e: Exception) { null }
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll().filterNotNull()
         val novels = mutableListOf<Novel>()
-        val items = doc.select(".fiction-list-item")
         
-        for (item in items) {
-            val titleElement = item.selectFirst(".fiction-title a") ?: continue
-            val title = titleElement.text()
-            val novelUrl = absoluteUrl(titleElement.attr("href"))
-            val coverUrl = coverUrlFrom(item)
-            
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+        for (doc in docs) {
+            val items = doc.select(".fiction-list-item")
+            for (item in items) {
+                val titleElement = item.selectFirst(".fiction-title a") ?: continue
+                val title = titleElement.text()
+                val novelUrl = absoluteUrl(titleElement.attr("href"))
+                val coverUrl = coverUrlFrom(item)
+                
+                novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+            }
         }
         
         novels

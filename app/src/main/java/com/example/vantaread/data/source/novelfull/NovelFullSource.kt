@@ -7,6 +7,8 @@ import com.example.vantaread.data.model.NovelDetails
 import com.example.vantaread.data.source.NovelSource
 import com.example.vantaread.data.source.util.WebViewScraper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.net.URLEncoder
@@ -28,42 +30,65 @@ class NovelFullSource(private val context: Context) : NovelSource {
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
     override suspend fun getPopularNovels(): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/most-popular"
-        val doc = runCatching { 
-            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
-        }.getOrElse { WebViewScraper.getHtml(context, url) }
+        val urls = listOf(
+            "$baseUrl/most-popular?page=1",
+            "$baseUrl/most-popular?page=2"
+        )
         
+        val deferredDocs = urls.map { url ->
+            async {
+                runCatching { 
+                    Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+                }.getOrElse { WebViewScraper.getHtml(context, url) }
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll()
         val novels = mutableListOf<Novel>()
-        val items = doc.select(".list-truyen .row")
         
-        for (item in items) {
-            val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
-            val title = titleElement.text()
-            val novelUrl = absoluteUrl(titleElement.attr("href"))
-            val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
-            
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+        for (doc in docs) {
+            val items = doc.select(".list-truyen .row")
+            for (item in items) {
+                val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
+                val title = titleElement.text()
+                val novelUrl = absoluteUrl(titleElement.attr("href"))
+                val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
+                
+                novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+            }
         }
         
         novels
     }
 
     override suspend fun searchNovels(query: String): List<Novel> = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/search?keyword=${URLEncoder.encode(query, "UTF-8")}"
-        val doc = runCatching { 
-            Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
-        }.getOrElse { WebViewScraper.getHtml(context, url) }
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val urls = listOf(
+            "$baseUrl/search?keyword=$encodedQuery&page=1",
+            "$baseUrl/search?keyword=$encodedQuery&page=2"
+        )
         
+        val deferredDocs = urls.map { url ->
+            async {
+                runCatching { 
+                    Jsoup.connect(url).userAgent(userAgent).referrer(baseUrl).timeout(10000).get() 
+                }.getOrElse { WebViewScraper.getHtml(context, url) }
+            }
+        }
+        
+        val docs = deferredDocs.awaitAll()
         val novels = mutableListOf<Novel>()
-        val items = doc.select(".list-truyen .row")
         
-        for (item in items) {
-            val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
-            val title = titleElement.text()
-            val novelUrl = absoluteUrl(titleElement.attr("href"))
-            val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
-            
-            novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+        for (doc in docs) {
+            val items = doc.select(".list-truyen .row")
+            for (item in items) {
+                val titleElement = item.selectFirst("h3.truyen-title a") ?: continue
+                val title = titleElement.text()
+                val novelUrl = absoluteUrl(titleElement.attr("href"))
+                val coverUrl = item.selectFirst("img.cover, img[src]")?.attr("src")?.let(::absoluteUrl) ?: ""
+                
+                novels.add(Novel(url = novelUrl, title = title, coverUrl = coverUrl, sourceId = sourceId))
+            }
         }
         
         novels

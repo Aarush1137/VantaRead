@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +57,7 @@ fun ReaderScreen(
     sourceId: String,
     novelUrl: String,
     onNavigateBack: () -> Unit,
+    onNavigateToNovel: (novelUrl: String) -> Unit,
     onNavigateToChapter: (chapterUrl: String, chapterTitle: String) -> Unit,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
@@ -288,6 +290,15 @@ fun ReaderScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack, 
                             contentDescription = "Back",
+                            tint = settings.themeMode.textColor
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onNavigateToNovel(novelUrl) }) {
+                        Icon(
+                            Icons.Default.MenuBook,
+                            contentDescription = "Go to Novel Details",
                             tint = settings.themeMode.textColor
                         )
                     }

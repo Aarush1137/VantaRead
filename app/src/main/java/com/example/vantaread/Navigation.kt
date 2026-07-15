@@ -30,6 +30,7 @@ import com.example.vantaread.ui.history.HistoryScreen
 import com.example.vantaread.ui.library.LibraryScreen
 import com.example.vantaread.ui.reader.ReaderScreen
 import com.example.vantaread.ui.settings.SettingsScreen
+import com.example.vantaread.ui.stats.StatsScreen
 import com.example.vantaread.ui.suggestions.SuggestionsScreen
 
 @Composable
@@ -42,6 +43,7 @@ fun MainNavigation() {
         currentRoute is Suggestions ||
         currentRoute is Downloads ||
         currentRoute is History ||
+        currentRoute is Stats ||
         currentRoute is Settings
 
     Scaffold(
@@ -91,6 +93,17 @@ fun MainNavigation() {
                         },
                         icon = { Icon(Icons.Filled.DownloadDone, contentDescription = "Downloads") },
                         label = { Text("Downloads") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute is Stats,
+                        onClick = {
+                            if (currentRoute !is Stats) {
+                                backStack.clear()
+                                backStack.add(Stats)
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.History, contentDescription = "Stats") },
+                        label = { Text("Stats") }
                     )
                 }
             }
@@ -161,6 +174,10 @@ fun MainNavigation() {
                         sourceId = navKey.sourceId,
                         novelUrl = navKey.novelUrl,
                         onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
+                        onNavigateToNovel = { novelUrl ->
+                            if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
+                            backStack.add(NovelDetail(novelUrl, navKey.sourceId))
+                        },
                         onNavigateToChapter = { chapterUrl, chapterTitle ->
                             if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
                             backStack.add(Reader(chapterUrl, navKey.sourceId, navKey.novelUrl, chapterTitle))
@@ -169,6 +186,9 @@ fun MainNavigation() {
                 }
                 entry<Settings> {
                     SettingsScreen()
+                }
+                entry<Stats> {
+                    StatsScreen()
                 }
             },
         )
