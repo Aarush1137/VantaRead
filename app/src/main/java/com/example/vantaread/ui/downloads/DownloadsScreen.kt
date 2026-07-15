@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
@@ -32,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +55,7 @@ fun DownloadsScreen(
 ) {
     val downloadedChapters by viewModel.downloadedChapters.collectAsState()
     val activeDownloads by viewModel.activeDownloads.collectAsState()
+    var expandedNovels by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(setOf<String>()) }
 
     Scaffold(
         topBar = {
@@ -112,30 +116,65 @@ fun DownloadsScreen(
                 
                 groupedChapters.forEach { (novelTitle, chapters) ->
                     item(key = "header_$novelTitle") {
-                        Text(
-                            text = novelTitle,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-                        )
+                        val isExpanded = expandedNovels.contains(novelTitle)
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    expandedNovels = if (isExpanded) {
+                                        expandedNovels - novelTitle
+                                    } else {
+                                        expandedNovels + novelTitle
+                                    }
+                                },
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = novelTitle,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Text(
+                                        text = "${chapters.size} chapters",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(
+                                    imageVector = if (isExpanded) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore,
+                                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                     
-                    items(
-                        items = chapters,
-                        key = { it.chapterUrl }
-                    ) { chapter ->
-                        DownloadedChapterItem(
-                            chapter = chapter,
-                            onClick = {
-                                onChapterClick(
-                                    chapter.chapterUrl,
-                                    chapter.sourceId,
-                                    chapter.novelUrl,
-                                    chapter.chapterTitle
-                                )
-                            },
-                            onRemove = { viewModel.removeDownload(chapter.chapterUrl) }
-                        )
+                    if (expandedNovels.contains(novelTitle)) {
+                        items(
+                            items = chapters,
+                            key = { it.chapterUrl }
+                        ) { chapter ->
+                            DownloadedChapterItem(
+                                chapter = chapter,
+                                onClick = {
+                                    onChapterClick(
+                                        chapter.chapterUrl,
+                                        chapter.sourceId,
+                                        chapter.novelUrl,
+                                        chapter.chapterTitle
+                                    )
+                                },
+                                onRemove = { viewModel.removeDownload(chapter.chapterUrl) }
+                            )
+                        }
                     }
                 }
             }

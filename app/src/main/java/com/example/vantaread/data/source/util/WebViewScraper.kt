@@ -62,13 +62,13 @@ object WebViewScraper {
                                 
                                 if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...") || unescapedHtml.length < 1000) {
                                     // Still on Cloudflare page or page hasn't fully rendered its content yet
-                                    if (attempts > 12) {
+                                    if (attempts > 30) {
                                         finished = true
                                         if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
                                         view.destroy()
                                     } else {
-                                        // Check again in 400ms
-                                        view.postDelayed(this, 400)
+                                        // Check again in 500ms
+                                        view.postDelayed(this, 500)
                                     }
                                 } else {
                                     finished = true

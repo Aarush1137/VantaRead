@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import androidx.compose.ui.platform.LocalUriHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +86,10 @@ fun NovelDetailScreen(
                     }
                 },
                 actions = {
+                    val uriHandler = LocalUriHandler.current
+                    IconButton(onClick = { uriHandler.openUri(novelUrl) }) {
+                        Icon(Icons.Default.Public, contentDescription = "Open in Browser")
+                    }
                     IconButton(onClick = { viewModel.toggleBookmark() }) {
                         Icon(
                             imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

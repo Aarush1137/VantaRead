@@ -112,7 +112,15 @@ class LightNovelPubSource(private val context: Context) : NovelSource {
         }.getOrElse { fetchDocument(novelUrl) }
         
         val headerText = doc.selectFirst(".header-stats, .novel-info, .m-book1")?.text() ?: ""
-        val chapterMatch = Regex("([0-9,]+)\\s*Chapters?", RegexOption.IGNORE_CASE).find(headerText)
+        
+        // Match "1,234 Chapters", "Chapters: 1234", "1234", etc. specifically inside the strong tag if possible
+        val chapterCountRaw = doc.select(".header-stats span:contains(Chapters) strong, .header-stats strong, .novel-info strong").map { it.text() }
+            .plus(headerText)
+            .joinToString(" ")
+            
+        val chapterMatch = Regex("([0-9,]+)\\s*Chapters?", RegexOption.IGNORE_CASE).find(chapterCountRaw)
+            ?: Regex("Chapters?\\s*:\\s*([0-9,]+)", RegexOption.IGNORE_CASE).find(chapterCountRaw)
+            
         val chapterCount = chapterMatch?.groupValues?.get(1)?.replace(",", "")?.toIntOrNull()
         
         if (chapterCount != null && chapterCount > 0) {
