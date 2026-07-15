@@ -1,5 +1,7 @@
 package com.example.vantaread.data.repository
 
+import com.example.vantaread.data.db.BookmarkDao
+import com.example.vantaread.data.db.BookmarkEntity
 import com.example.vantaread.data.db.ChapterEntity
 import com.example.vantaread.data.db.DownloadedChapter
 import com.example.vantaread.data.db.NovelDao
@@ -27,7 +29,8 @@ data class SuggestionFetchResult(
 class NovelRepository @Inject constructor(
     private val sources: Map<String, @JvmSuppressWildcards NovelSource>,
     private val novelDao: NovelDao,
-    private val readingHistoryDao: ReadingHistoryDao
+    private val readingHistoryDao: ReadingHistoryDao,
+    private val bookmarkDao: BookmarkDao
 ) {
     private data class CachedSuggestionSource(
         val novels: List<Novel>,
@@ -342,5 +345,27 @@ class NovelRepository @Inject constructor(
 
     suspend fun clearHistory() {
         readingHistoryDao.clearAll()
+    }
+
+    // --- Bookmarks ---
+
+    fun getBookmarksForChapter(chapterUrl: String): Flow<List<BookmarkEntity>> {
+        return bookmarkDao.getBookmarksForChapter(chapterUrl)
+    }
+
+    fun getBookmarksForNovel(novelUrl: String): Flow<List<BookmarkEntity>> {
+        return bookmarkDao.getBookmarksForNovel(novelUrl)
+    }
+
+    suspend fun addBookmark(bookmark: BookmarkEntity) {
+        bookmarkDao.insertBookmark(bookmark)
+    }
+
+    suspend fun deleteBookmark(bookmark: BookmarkEntity) {
+        bookmarkDao.deleteBookmark(bookmark)
+    }
+
+    suspend fun deleteBookmarkById(bookmarkId: Long) {
+        bookmarkDao.deleteBookmarkById(bookmarkId)
     }
 }

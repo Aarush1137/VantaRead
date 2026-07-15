@@ -3,19 +3,19 @@
 - [ ] Git & Documentation
     - [ ] Update README with roadmap highlights
     - [ ] Commit current stable state
-- [ ] Auth Fixes
-    - [ ] Update `AuthRepository` to rethrow `CancellationException`
-    - [ ] Improve `AuthViewModel` error reporting and reset `isLoading` in `finally`
-    - [ ] Add logging to auth flows
-- [ ] TTS Enhancements
-    - [ ] Add voice filtering/categorization in `ReaderViewModel`
-    - [ ] Improve voice selection UI in `ReaderScreen`
-- [ ] Reader Bookmarks (New Feature)
-    - [ ] Create `BookmarkEntity` and `BookmarkDao`
-    - [ ] Update `AppDatabase` with the new table
-    - [ ] Update `NovelRepository` with bookmark methods
-    - [ ] Implement bookmark logic in `ReaderViewModel`
-    - [ ] Add bookmark UI to `ReaderScreen`
+- [x] Auth Fixes
+    - [x] Update `AuthRepository` to rethrow `CancellationException`
+    - [x] Improve `AuthViewModel` error reporting and reset `isLoading` in `finally`
+    - [x] Add logging to auth flows
+- [x] TTS Enhancements
+    - [x] Add voice filtering/categorization in `ReaderViewModel`
+    - [x] Improve voice selection UI in `ReaderScreen`
+- [x] Reader Bookmarks (New Feature)
+    - [x] Create `BookmarkEntity` and `BookmarkDao`
+    - [x] Update `AppDatabase` with the new table
+    - [x] Update `NovelRepository` with bookmark methods
+    - [x] Implement bookmark logic in `ReaderViewModel`
+    - [x] Add bookmark UI to `ReaderScreen`
 - [ ] Verification
     - [ ] Test Auth flows (Google, Email, Phone)
     - [ ] Test TTS voice switching

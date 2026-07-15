@@ -21,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Pause
@@ -78,6 +81,7 @@ fun ReaderScreen(
     val chapters by viewModel.chapters.collectAsState()
     val currentChapterIndex by viewModel.currentChapterIndex.collectAsState()
     val initialScrollIndex by viewModel.initialScrollIndex.collectAsState()
+    val bookmarks by viewModel.bookmarks.collectAsState()
 
     val isTtsPlaying by viewModel.isTtsPlaying.collectAsState()
     val ttsHighlightIndex by viewModel.ttsHighlightIndex.collectAsState()
@@ -102,6 +106,8 @@ fun ReaderScreen(
     var showHud by remember { mutableStateOf(false) }
     var showChapterPicker by remember { mutableStateOf(false) }
     var showVoicePicker by remember { mutableStateOf(false) }
+    var showBookmarksSheet by remember { mutableStateOf(false) }
+    var showAddBookmarkDialog by remember { mutableStateOf(false) }
     var hudInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     // Restore scroll position
@@ -337,6 +343,26 @@ fun ReaderScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        showAddBookmarkDialog = true
+                        notifyInteraction()
+                    }) {
+                        Icon(
+                            Icons.Default.BookmarkAdd,
+                            contentDescription = "Add Bookmark",
+                            tint = settings.themeMode.textColor
+                        )
+                    }
+                    IconButton(onClick = {
+                        showBookmarksSheet = true
+                        notifyInteraction()
+                    }) {
+                        Icon(
+                            Icons.Default.Bookmarks,
+                            contentDescription = "View Bookmarks",
+                            tint = settings.themeMode.textColor
+                        )
+                    }
                     IconButton(onClick = { onNavigateToNovel(novelUrl) }) {
                         Icon(
                             Icons.Default.MenuBook,
@@ -441,6 +467,30 @@ fun ReaderScreen(
                 onVoiceSelected = { voice ->
                     showVoicePicker = false
                     viewModel.selectTtsVoice(voice)
+                }
+            )
+        }
+
+        if (showBookmarksSheet) {
+            BookmarksSheet(
+                bookmarks = bookmarks,
+                onDismiss = { showBookmarksSheet = false },
+                onBookmarkSelected = { bookmark ->
+                    showBookmarksSheet = false
+                    coroutineScope.launch {
+                        listState.animateScrollToItem(bookmark.paragraphIndex)
+                    }
+                },
+                onDeleteBookmark = { viewModel.deleteBookmark(it) }
+            )
+        }
+
+        if (showAddBookmarkDialog) {
+            AddBookmarkDialog(
+                onDismiss = { showAddBookmarkDialog = false },
+                onConfirm = { label ->
+                    showAddBookmarkDialog = false
+                    viewModel.addBookmark(listState.firstVisibleItemIndex, label)
                 }
             )
         }
@@ -839,6 +889,105 @@ private fun VoicePickerSheet(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookmarksSheet(
+    bookmarks: List<com.example.vantaread.data.db.BookmarkEntity>,
+    onDismiss: () -> Unit,
+    onBookmarkSelected: (com.example.vantaread.data.db.BookmarkEntity) -> Unit,
+    onDeleteBookmark: (com.example.vantaread.data.db.BookmarkEntity) -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Chapter Bookmarks", style = MaterialTheme.typography.titleLarge)
+            
+            if (bookmarks.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No bookmarks for this chapter yet.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.height(420.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(bookmarks.size) { index ->
+                        val bookmark = bookmarks[index]
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onBookmarkSelected(bookmark) },
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (bookmark.label.isBlank()) "Bookmark at para ${bookmark.paragraphIndex + 1}" else bookmark.label,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = "Paragraph ${bookmark.paragraphIndex + 1}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                IconButton(onClick = { onDeleteBookmark(bookmark) }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Delete")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddBookmarkDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var label by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Bookmark") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Enter a label for this bookmark (optional):")
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    placeholder = { Text("e.g. Interesting part") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(label) }) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

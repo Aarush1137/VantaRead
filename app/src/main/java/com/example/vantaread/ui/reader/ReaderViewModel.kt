@@ -2,6 +2,7 @@ package com.example.vantaread.ui.reader
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vantaread.data.db.BookmarkEntity
 import com.example.vantaread.data.db.ChapterEntity
 import com.example.vantaread.data.model.ReaderSettings
 import com.example.vantaread.data.prefs.ReaderPreferencesManager
@@ -64,9 +65,13 @@ class ReaderViewModel @Inject constructor(
     private val _initialScrollIndex = MutableStateFlow(0)
     val initialScrollIndex: StateFlow<Int> = _initialScrollIndex.asStateFlow()
 
+    private val _bookmarks = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    val bookmarks: StateFlow<List<BookmarkEntity>> = _bookmarks.asStateFlow()
+
     val settings: StateFlow<ReaderSettings> = preferencesManager.settings
 
     private var saveScrollJob: Job? = null
+    private var bookmarksJob: Job? = null
 
     private var tts: TextToSpeech? = null
     private val _isTtsPlaying = MutableStateFlow(false)
@@ -123,6 +128,16 @@ class ReaderViewModel @Inject constructor(
         
         loadChapter()
         loadChapterList()
+        loadBookmarks()
+    }
+
+    private fun loadBookmarks() {
+        bookmarksJob?.cancel()
+        bookmarksJob = viewModelScope.launch {
+            novelRepository.getBookmarksForChapter(chapterUrl).collect {
+                _bookmarks.value = it
+            }
+        }
     }
 
     private fun loadChapter() {
@@ -226,6 +241,25 @@ class ReaderViewModel @Inject constructor(
 
     fun setTtsSpeechRate(rate: Float) {
         updateSettings(settings.value.copy(ttsSpeechRate = rate.coerceIn(0.5f, 2.0f)))
+    }
+
+    fun addBookmark(paragraphIndex: Int, label: String) {
+        viewModelScope.launch {
+            novelRepository.addBookmark(
+                BookmarkEntity(
+                    novelUrl = novelUrl,
+                    chapterUrl = chapterUrl,
+                    paragraphIndex = paragraphIndex,
+                    label = label
+                )
+            )
+        }
+    }
+
+    fun deleteBookmark(bookmark: BookmarkEntity) {
+        viewModelScope.launch {
+            novelRepository.deleteBookmark(bookmark)
+        }
     }
 
     fun startTts(paragraphs: List<String>, startIndex: Int = 0) {
