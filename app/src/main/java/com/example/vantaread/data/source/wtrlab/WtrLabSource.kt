@@ -135,10 +135,6 @@ class WtrLabSource @Inject constructor(
             chapter.copy(index = index)
         }
 
-        if (distinctChapters.isNotEmpty()) {
-            return@withContext distinctChapters
-        }
-
         val chapterCount = Regex(""""(?:raw_)?chapter_count":(\d+)""")
             .find(doc.html())
             ?.groupValues
@@ -146,14 +142,22 @@ class WtrLabSource @Inject constructor(
             ?.toIntOrNull()
             ?: 0
 
-        (1..chapterCount).map { chapterNumber ->
-            Chapter(
-                url = "$novelUrl/chapter-$chapterNumber",
-                novelUrl = novelUrl,
-                title = "Chapter $chapterNumber",
-                index = chapterNumber - 1
-            )
+        if (chapterCount > distinctChapters.size) {
+            return@withContext (1..chapterCount).map { chapterNumber ->
+                Chapter(
+                    url = "$novelUrl/chapter-$chapterNumber",
+                    novelUrl = novelUrl,
+                    title = "Chapter $chapterNumber",
+                    index = chapterNumber - 1
+                )
+            }
         }
+
+        if (distinctChapters.isNotEmpty()) {
+            return@withContext distinctChapters
+        }
+
+        return@withContext emptyList()
     }
 
     override suspend fun getChapterContent(chapterUrl: String): String = withContext(Dispatchers.IO) {

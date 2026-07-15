@@ -7,5 +7,6 @@ enum class AppAccent(val label: String, val color: Color) {
     LAVENDER("Lavender", Color(0xFFB57EDC)),
     MINT_GREEN("Mint Green", Color(0xFF4CAF8F)),
     SKY_BLUE("Sky Blue", Color(0xFF3F8CFF)),
-    ROSE_PINK("Rose Pink", Color(0xFFE91E63))
+    ROSE_PINK("Rose Pink", Color(0xFFE91E63)),
+    MATERIAL_YOU("Material You (Dynamic)", Color.Unspecified)
 }
