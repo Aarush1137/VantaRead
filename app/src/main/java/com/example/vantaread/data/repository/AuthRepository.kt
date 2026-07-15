@@ -32,6 +32,7 @@ class AuthRepository @Inject constructor(
             _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -43,6 +44,7 @@ class AuthRepository @Inject constructor(
             _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -52,6 +54,7 @@ class AuthRepository @Inject constructor(
             requireAuth().sendPasswordResetEmail(email).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -63,6 +66,7 @@ class AuthRepository @Inject constructor(
             _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }

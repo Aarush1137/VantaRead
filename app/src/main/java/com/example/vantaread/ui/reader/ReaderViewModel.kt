@@ -261,13 +261,17 @@ class ReaderViewModel @Inject constructor(
 
     private fun refreshTtsVoices() {
         val voices = tts?.voices.orEmpty()
-            .sortedWith(compareBy<Voice> { it.locale.displayLanguage }.thenBy { it.name })
+            .sortedWith(
+                compareBy<Voice> { it.locale.displayLanguage }
+                    .thenBy { it.isNetworkConnectionRequired }
+                    .thenBy { it.name }
+            )
             .map { voice ->
                 TtsVoiceOption(
                     name = voice.name,
                     label = buildString {
                         append(voice.locale.displayName.ifBlank { voice.locale.toLanguageTag() })
-                        if (voice.isNetworkConnectionRequired) append(" - online")
+                        if (voice.isNetworkConnectionRequired) append(" (online)")
                     },
                     localeTag = voice.locale.toLanguageTag(),
                     requiresNetwork = voice.isNetworkConnectionRequired

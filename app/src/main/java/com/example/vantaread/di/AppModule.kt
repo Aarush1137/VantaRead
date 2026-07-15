@@ -3,6 +3,7 @@ package com.example.vantaread.di
 import android.content.Context
 import androidx.room.Room
 import com.example.vantaread.data.db.AppDatabase
+import com.example.vantaread.data.db.BookmarkDao
 import com.example.vantaread.data.db.NovelDao
 import com.example.vantaread.data.db.ReadingHistoryDao
 import com.example.vantaread.data.repository.FirebaseServices
@@ -50,6 +51,11 @@ object AppModule {
     }
 
     @Provides
+    fun provideBookmarkDao(appDatabase: AppDatabase): BookmarkDao {
+        return appDatabase.bookmarkDao()
+    }
+
+    @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): androidx.work.WorkManager {
         return androidx.work.WorkManager.getInstance(context)
@@ -75,7 +81,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNovelRepository(sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>, novelDao: NovelDao, readingHistoryDao: ReadingHistoryDao): NovelRepository {
-        return NovelRepository(sources, novelDao, readingHistoryDao)
+    fun provideNovelRepository(
+        sources: Map<String, @JvmSuppressWildcards com.example.vantaread.data.source.NovelSource>,
+        novelDao: NovelDao,
+        readingHistoryDao: ReadingHistoryDao,
+        bookmarkDao: BookmarkDao
+    ): NovelRepository {
+        return NovelRepository(sources, novelDao, readingHistoryDao, bookmarkDao)
     }
 }

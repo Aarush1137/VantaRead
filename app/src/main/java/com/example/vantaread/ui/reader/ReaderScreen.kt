@@ -101,6 +101,7 @@ fun ReaderScreen(
 
     var showHud by remember { mutableStateOf(false) }
     var showChapterPicker by remember { mutableStateOf(false) }
+    var showVoicePicker by remember { mutableStateOf(false) }
     var hudInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     // Restore scroll position
@@ -384,6 +385,10 @@ fun ReaderScreen(
                     showChapterPicker = true
                     notifyInteraction()
                 },
+                onOpenVoicePicker = {
+                    showVoicePicker = true
+                    notifyInteraction()
+                },
                 onPrevChapter = {
                     viewModel.navigateToChapter(currentChapterIndex - 1)?.let {
                         onNavigateToChapter(it.url, it.title)
@@ -404,10 +409,6 @@ fun ReaderScreen(
                     }
                 },
                 ttsVoices = ttsVoices,
-                onTtsVoiceSelected = {
-                    viewModel.selectTtsVoice(it)
-                    notifyInteraction()
-                },
                 onTtsRateChanged = {
                     viewModel.setTtsSpeechRate(it)
                     notifyInteraction()
@@ -431,6 +432,18 @@ fun ReaderScreen(
                 }
             )
         }
+
+        if (showVoicePicker) {
+            VoicePickerSheet(
+                voices = ttsVoices,
+                selectedVoiceName = settings.ttsVoiceName,
+                onDismiss = { showVoicePicker = false },
+                onVoiceSelected = { voice ->
+                    showVoicePicker = false
+                    viewModel.selectTtsVoice(voice)
+                }
+            )
+        }
     }
 }
 
@@ -446,18 +459,17 @@ fun BottomControlBar(
     onToggleAutoScroll: () -> Unit,
     onAutoScrollSpeedChanged: (Float) -> Unit,
     onOpenChapterPicker: () -> Unit,
+    onOpenVoicePicker: () -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
     isTtsPlaying: Boolean,
     onToggleTts: () -> Unit,
     ttsVoices: List<TtsVoiceOption>,
-    onTtsVoiceSelected: (TtsVoiceOption) -> Unit,
     onTtsRateChanged: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hudBg = Color(0xFF1E1E1E).copy(alpha = 0.95f)
     val hudText = Color.White
-    var showVoiceMenu by remember { mutableStateOf(false) }
     val selectedVoice = ttsVoices.firstOrNull { it.name == settings.ttsVoiceName }
         ?: ttsVoices.firstOrNull { it.localeTag == settings.ttsLocaleTag }
 
@@ -559,7 +571,7 @@ fun BottomControlBar(
                 Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = Color.White)
                 Box(modifier = Modifier.weight(1f)) {
                     OutlinedButton(
-                        onClick = { showVoiceMenu = true },
+                        onClick = onOpenVoicePicker,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                     ) {
@@ -570,26 +582,6 @@ fun BottomControlBar(
                             modifier = Modifier.weight(1f)
                         )
                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                    }
-                    DropdownMenu(
-                        expanded = showVoiceMenu,
-                        onDismissRequest = { showVoiceMenu = false }
-                    ) {
-                        ttsVoices.forEach { voice ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = voice.label,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                onClick = {
-                                    showVoiceMenu = false
-                                    onTtsVoiceSelected(voice)
-                                }
-                            )
-                        }
                     }
                 }
             }
@@ -745,6 +737,103 @@ fun BottomControlBar(
                                 )
                                 .clickable { onSettingsChanged(settings.copy(themeMode = theme)) }
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VoicePickerSheet(
+    voices: List<TtsVoiceOption>,
+    selectedVoiceName: String?,
+    onDismiss: () -> Unit,
+    onVoiceSelected: (TtsVoiceOption) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filteredVoices = remember(voices, query) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) {
+            voices
+        } else {
+            voices.filter { voice ->
+                voice.label.contains(trimmedQuery, ignoreCase = true) ||
+                    voice.localeTag.contains(trimmedQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Select TTS Voice", style = MaterialTheme.typography.titleLarge)
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                label = { Text("Search by language or voice name") },
+                singleLine = true
+            )
+            LazyColumn(
+                modifier = Modifier.height(420.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filteredVoices.size) { index ->
+                    val voice = filteredVoices[index]
+                    val isSelected = voice.name == selectedVoiceName
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onVoiceSelected(voice) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = voice.label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                                Text(
+                                    text = voice.localeTag,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    }
+                                )
+                            }
+                            if (voice.requiresNetwork) {
+                                Icon(
+                                    imageVector = Icons.Default.Speed, // Using Speed as a placeholder for "online"
+                                    contentDescription = "Online only",
+                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
