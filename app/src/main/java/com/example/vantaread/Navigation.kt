@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.example.vantaread.ui.auth.AuthScreen
 import com.example.vantaread.ui.detail.NovelDetailScreen
 import com.example.vantaread.ui.discover.DiscoverScreen
 import com.example.vantaread.ui.downloads.DownloadsScreen
@@ -137,6 +138,11 @@ fun MainNavigation() {
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
                     )
                 }
+                entry<Auth> {
+                    AuthScreen(
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) }
+                    )
+                }
                 entry<Suggestions> {
                     SuggestionsScreen(
                         onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
@@ -185,7 +191,9 @@ fun MainNavigation() {
                     )
                 }
                 entry<Settings> {
-                    SettingsScreen()
+                    SettingsScreen(
+                        onNavigateToAuth = { backStack.add(Auth) }
+                    )
                 }
                 entry<Stats> {
                     StatsScreen()

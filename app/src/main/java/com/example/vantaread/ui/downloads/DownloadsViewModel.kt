@@ -68,4 +68,11 @@ class DownloadsViewModel @Inject constructor(
             novelRepository.removeDownloadedChapter(chapterUrl)
         }
     }
+
+    fun removeAllDownloads() {
+        viewModelScope.launch {
+            novelRepository.removeAllDownloadedChapters()
+            workManager.cancelAllWorkByTag(ChapterDownloadWorker.TAG_DOWNLOAD)
+        }
+    }
 }

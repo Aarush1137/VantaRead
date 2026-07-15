@@ -18,6 +18,9 @@ import com.example.vantaread.data.source.SourceCatalog
 import com.example.vantaread.worker.ChapterDownloadWorker
 
 import androidx.work.Data
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.flow.combine
@@ -157,11 +160,22 @@ class LibraryViewModel @Inject constructor(
 
                             OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
                                 .setInputData(data)
+                                .setConstraints(
+                                    Constraints.Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                                        .build()
+                                )
                                 .addTag(ChapterDownloadWorker.TAG_DOWNLOAD)
                                 .addTag(ChapterDownloadWorker.tagForNovel(chapter.novelUrl))
                                 .build()
                         }
-                    workManager.enqueue(requests)
+                    requests.forEachIndexed { index, request ->
+                        workManager.enqueueUniqueWork(
+                            ChapterDownloadWorker.uniqueWorkNameForChapter(chapters[index].url),
+                            ExistingWorkPolicy.KEEP,
+                            request
+                        )
+                    }
                 }
                 
                 _addNovelResult.value = Result.success(details.title)

@@ -34,6 +34,7 @@ import com.example.vantaread.data.source.SourceCatalog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onNavigateToAuth: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val currentTheme by viewModel.currentTheme.collectAsState()
@@ -192,6 +193,22 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Clear Cache & History")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Account",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Button(
+                onClick = onNavigateToAuth,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Manage Account & Cloud Sync")
             }
         }
     }

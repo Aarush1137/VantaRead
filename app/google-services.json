@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "338510657294",
+    "project_id": "vantaread",
+    "storage_bucket": "vantaread.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:338510657294:android:2020b088832de0cf62c95f",
+        "android_client_info": {
+          "package_name": "com.example.vantaread"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgA58Vw7VoyIUpusqNHJjfmHtrgY6uVY4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

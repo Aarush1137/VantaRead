@@ -16,12 +16,20 @@ It features an intelligent **headless WebView scraper** designed to bypass Cloud
 * **Reading Statistics:** Track your total chapters read, novels started, and your most read novel on the new Stats screen.
 * **Offline Reading:** Download individual chapters or entire novels for offline reading using a robust WorkManager implementation.
 * **Grouped Downloads Screen:** Beautifully organized accordion UI grouping all your downloaded chapters by novel.
+* **Resilient Downloads:** Downloads require connectivity, avoid duplicate WorkManager jobs, retry failed fetches, and surface per-novel progress through notifications.
 
 ### 👓 The Reader
 * **Distraction-Free Interface:** Edge-to-edge Material 3 reading screen with full customization (adjustable font sizes, margins, fonts, and themes including pure AMOLED Vanta Black).
 * **Reading Progress:** Automatically saves your scroll position.
 * **Auto-Scroll:** Kick back and relax! Toggle auto-scrolling with an adjustable speed slider.
 * **Smart Navigation:** Tap zones (left/right) to navigate chapters, overlay HUDs, and seamless prev/next chapter transitions.
+* **Read Aloud:** Built-in text-to-speech controls highlight and follow the current paragraph.
+* **Quick Chapter Advance:** Pull upward at the end of a chapter to open the next one.
+
+### Account & Cloud Sync
+* **Firebase Authentication:** Sign in with email/password or phone verification.
+* **Private Bookmark Sync:** Back up and restore bookmarked novels across devices. Sync uses stable IDs, removes stale cloud bookmarks, and safely handles libraries larger than Firestore's 500-write batch limit.
+* **Secure Rules:** `firestore.rules` scopes bookmark access strictly to the authenticated user.
 
 ### 🔍 Discovery & Sources
 * **Multi-Source Support:** Read from NovelFull, LightNovelPub, FreeWebNovel, ScribbleHub, and Royal Road.
@@ -74,8 +82,24 @@ Current Implemented Sources:
 * **Hilt (Dependency Injection)**
 * **Coil (Image Loading)**
 * **WorkManager (Background Downloads)**
+* **Firebase Authentication & Cloud Firestore**
 * **Jsoup & Android WebView (Web Scraping)**
 * **Coroutines & StateFlow**
+
+---
+
+## Firebase setup
+
+The Android app is configured for the `com.example.vantaread` Firebase application through `app/google-services.json`.
+
+Before releasing a build, enable the required sign-in providers in the Firebase console:
+
+1. Enable **Email/Password** under Authentication > Sign-in method.
+2. Enable and configure **Phone** authentication, including SHA-1/SHA-256 fingerprints for the release signing key.
+3. Create a Cloud Firestore database.
+4. Deploy the included `firestore.rules` using the Firebase CLI or paste them into Firestore Rules in the console.
+
+The included rules permit an authenticated user to read and write only `users/{uid}/bookmarks/*`.
 
 ---
 

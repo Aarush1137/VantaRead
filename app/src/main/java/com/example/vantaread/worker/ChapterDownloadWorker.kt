@@ -192,5 +192,8 @@ class ChapterDownloadWorker @AssistedInject constructor(
         const val KEY_DOWNLOAD_PROGRESS_TEXT = "download_progress_text"
 
         fun tagForNovel(novelUrl: String): String = "chapter_download_novel_$novelUrl"
+
+        fun uniqueWorkNameForChapter(chapterUrl: String): String =
+            "chapter_download_${java.util.UUID.nameUUIDFromBytes(chapterUrl.toByteArray(Charsets.UTF_8))}"
     }
 }

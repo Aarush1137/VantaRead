@@ -15,11 +15,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import android.content.Context
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Locale
+
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val novelRepository: NovelRepository,
     private val preferencesManager: ReaderPreferencesManager
-) : ViewModel() {
+) : ViewModel(), TextToSpeech.OnInitListener {
 
     var chapterUrl: String = ""
         private set
@@ -52,6 +59,45 @@ class ReaderViewModel @Inject constructor(
     val settings: StateFlow<ReaderSettings> = preferencesManager.settings
 
     private var saveScrollJob: Job? = null
+
+    private var tts: TextToSpeech? = null
+    private val _isTtsPlaying = MutableStateFlow(false)
+    val isTtsPlaying: StateFlow<Boolean> = _isTtsPlaying.asStateFlow()
+
+    private val _ttsHighlightIndex = MutableStateFlow(-1)
+    val ttsHighlightIndex: StateFlow<Int> = _ttsHighlightIndex.asStateFlow()
+
+    private var ttsParagraphs = listOf<String>()
+
+    init {
+        tts = TextToSpeech(context, this)
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts?.language = Locale.US
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    utteranceId?.toIntOrNull()?.let { index ->
+                        _ttsHighlightIndex.value = index
+                    }
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    utteranceId?.toIntOrNull()?.let { index ->
+                        if (index == ttsParagraphs.size - 1) {
+                            _isTtsPlaying.value = false
+                            _ttsHighlightIndex.value = -1
+                        } else if (_isTtsPlaying.value) {
+                            speakParagraph(index + 1)
+                        }
+                    }
+                }
+
+                override fun onError(utteranceId: String?) {}
+            })
+        }
+    }
 
     fun initialize(chapterUrl: String, sourceId: String, novelUrl: String) {
         if (this.chapterUrl == chapterUrl) return
@@ -154,5 +200,41 @@ class ReaderViewModel @Inject constructor(
 
     fun updateSettings(newSettings: ReaderSettings) {
         preferencesManager.updateSettings(newSettings)
+    }
+
+    fun startTts(paragraphs: List<String>, startIndex: Int = 0) {
+        if (paragraphs.isEmpty()) return
+        ttsParagraphs = paragraphs.map { androidx.core.text.HtmlCompat.fromHtml(it, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT).toString() }
+        _isTtsPlaying.value = true
+        speakParagraph(startIndex)
+    }
+
+    fun pauseTts() {
+        _isTtsPlaying.value = false
+        tts?.stop()
+    }
+
+    fun stopTts() {
+        _isTtsPlaying.value = false
+        _ttsHighlightIndex.value = -1
+        tts?.stop()
+    }
+
+    private fun speakParagraph(index: Int) {
+        if (index in ttsParagraphs.indices && _isTtsPlaying.value) {
+            val text = ttsParagraphs[index]
+            if (text.isNotBlank()) {
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, index.toString())
+            } else {
+                // Skip empty paragraphs immediately
+                speakParagraph(index + 1)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        tts?.stop()
+        tts?.shutdown()
     }
 }

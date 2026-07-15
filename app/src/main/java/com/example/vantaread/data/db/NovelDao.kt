@@ -9,8 +9,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NovelDao {
 
+    @Query("SELECT * FROM novels")
+    fun getAllNovels(): Flow<List<NovelEntity>>
+
+    @Query("SELECT * FROM novels")
+    suspend fun getAllNovelsSynchronous(): List<NovelEntity>
+
     @Query("SELECT * FROM novels WHERE isBookmarked = 1")
     fun getBookmarkedNovels(): Flow<List<NovelEntity>>
+
+    @Query("SELECT * FROM novels WHERE isBookmarked = 1")
+    suspend fun getBookmarkedNovelsSynchronous(): List<NovelEntity>
 
     @Query("SELECT * FROM novels WHERE url = :url")
     suspend fun getNovel(url: String): NovelEntity?
@@ -57,6 +66,9 @@ interface NovelDao {
 
     @Query("UPDATE chapters SET content = NULL, isDownloaded = 0 WHERE url = :chapterUrl")
     suspend fun removeDownloadedChapter(chapterUrl: String)
+
+    @Query("UPDATE chapters SET content = NULL, isDownloaded = 0 WHERE isDownloaded = 1")
+    suspend fun removeAllDownloadedChapters()
 
     @Query("SELECT COUNT(*) FROM chapters WHERE novelUrl = :novelUrl")
     suspend fun getChapterCountForNovel(novelUrl: String): Int

@@ -17,6 +17,9 @@ import javax.inject.Inject
 import androidx.work.WorkManager
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Data
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import com.example.vantaread.worker.ChapterDownloadWorker
 
 @HiltViewModel
@@ -201,13 +204,24 @@ class NovelDetailViewModel @Inject constructor(
                 
             OneTimeWorkRequestBuilder<ChapterDownloadWorker>()
                 .setInputData(data)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
                 .addTag(ChapterDownloadWorker.TAG_DOWNLOAD)
                 .addTag(ChapterDownloadWorker.tagForNovel(chapter.novelUrl))
                 .build()
         }
         
         if (workRequests.isNotEmpty()) {
-            workManager.enqueue(workRequests)
+            workRequests.forEachIndexed { index, request ->
+                workManager.enqueueUniqueWork(
+                    ChapterDownloadWorker.uniqueWorkNameForChapter(chaptersToDownload[index].url),
+                    ExistingWorkPolicy.KEEP,
+                    request
+                )
+            }
             _downloadMessage.value = "Queued ${workRequests.size} chapter download(s)."
         } else {
             _downloadMessage.value = "Selected chapters are already downloaded."

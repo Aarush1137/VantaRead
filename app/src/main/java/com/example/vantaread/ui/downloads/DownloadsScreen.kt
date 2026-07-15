@@ -60,7 +60,18 @@ fun DownloadsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Downloads") }
+                title = { Text("Downloads") },
+                actions = {
+                    if (downloadedChapters.isNotEmpty() || activeDownloads.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.removeAllDownloads() }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Clear All Downloads",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             )
         }
     ) { paddingValues ->

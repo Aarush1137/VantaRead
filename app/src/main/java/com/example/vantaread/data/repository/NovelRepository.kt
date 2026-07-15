@@ -185,6 +185,10 @@ class NovelRepository @Inject constructor(
         novelDao.removeDownloadedChapter(chapterUrl)
     }
 
+    suspend fun removeAllDownloadedChapters() {
+        novelDao.removeAllDownloadedChapters()
+    }
+
     // --- Reading History ---
 
     fun getReadingHistory(): Flow<List<ReadingHistoryEntity>> {

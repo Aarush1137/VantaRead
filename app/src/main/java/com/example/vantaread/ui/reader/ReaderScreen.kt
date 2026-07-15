@@ -13,7 +13,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,9 +74,12 @@ fun ReaderScreen(
     val chapters by viewModel.chapters.collectAsState()
     val currentChapterIndex by viewModel.currentChapterIndex.collectAsState()
     val initialScrollIndex by viewModel.initialScrollIndex.collectAsState()
-    
+
+    val isTtsPlaying by viewModel.isTtsPlaying.collectAsState()
+    val ttsHighlightIndex by viewModel.ttsHighlightIndex.collectAsState()
+
     val settings by viewModel.settings.collectAsState()
-    
+
     // Parse HTML into chunks for the LazyColumn
     val paragraphs = remember(content) {
         content?.split(Regex("(?i)<br\\s*/?>|</p>|<p>"))
@@ -88,7 +93,7 @@ fun ReaderScreen(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    
+
     var showHud by remember { mutableStateOf(false) }
     var hudInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
@@ -96,6 +101,14 @@ fun ReaderScreen(
     LaunchedEffect(initialScrollIndex, paragraphs.size) {
         if (initialScrollIndex > 0 && paragraphs.isNotEmpty() && initialScrollIndex < paragraphs.size) {
             listState.scrollToItem(initialScrollIndex)
+        }
+    }
+
+    // Auto-scroll to TTS highlighted paragraph
+    LaunchedEffect(ttsHighlightIndex) {
+        if (isTtsPlaying && ttsHighlightIndex >= 0 && ttsHighlightIndex < paragraphs.size) {
+            // Scroll so the highlighted item is near the top/center
+            listState.animateScrollToItem(ttsHighlightIndex, -100)
         }
     }
 
@@ -142,7 +155,7 @@ fun ReaderScreen(
 
     // Pull to next chapter logic
     var overscrollAccumulator by remember { mutableFloatStateOf(0f) }
-    
+
     val nestedScrollConnection = remember(currentChapterIndex) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -220,7 +233,7 @@ fun ReaderScreen(
                         vertical = 80.dp // Padding to prevent HUD from overlapping text at boundaries
                     )
                 ) {
-                    items(parsedParagraphs) { parsedParagraph ->
+                    itemsIndexed(parsedParagraphs) { index, parsedParagraph ->
                         AndroidView(
                             factory = { context ->
                                 TextView(context).apply {
@@ -237,6 +250,12 @@ fun ReaderScreen(
                                     else -> android.view.View.TEXT_ALIGNMENT_VIEW_START
                                 }
                                 textView.text = parsedParagraph
+
+                                if (isTtsPlaying && index == ttsHighlightIndex) {
+                                    textView.setBackgroundColor(accentColor.copy(alpha = 0.2f).toArgb())
+                                } else {
+                                    textView.setBackgroundColor(Color.Transparent.toArgb())
+                                }
                             },
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -277,9 +296,25 @@ fun ReaderScreen(
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopAppBar(
-                title = { 
+                title = {
                     Column {
-                        Text("Reader", color = settings.themeMode.textColor, style = MaterialTheme.typography.titleMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Reader", color = settings.themeMode.textColor, style = MaterialTheme.typography.titleMedium)
+                            if (chapters.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${chapters.size} Chs",
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                         if (chapterTitle.isNotEmpty()) {
                             Text(chapterTitle, color = settings.themeMode.textColor.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
                         }
@@ -288,7 +323,7 @@ fun ReaderScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = settings.themeMode.textColor
                         )
@@ -327,7 +362,7 @@ fun ReaderScreen(
                 totalChapters = chapters.size,
                 isAutoScrolling = isAutoScrolling,
                 autoScrollSpeed = autoScrollSpeed,
-                onSettingsChanged = { 
+                onSettingsChanged = {
                     viewModel.updateSettings(it)
                     notifyInteraction()
                 },
@@ -347,6 +382,15 @@ fun ReaderScreen(
                 onNextChapter = {
                     viewModel.navigateToChapter(currentChapterIndex + 1)?.let {
                         onNavigateToChapter(it.url, it.title)
+                    }
+                },
+                isTtsPlaying = isTtsPlaying,
+                onToggleTts = {
+                    if (isTtsPlaying) {
+                        viewModel.pauseTts()
+                    } else {
+                        val startIndex = listState.firstVisibleItemIndex.coerceAtLeast(0)
+                        viewModel.startTts(paragraphs, startIndex)
                     }
                 },
                 modifier = Modifier.clickable(
@@ -372,6 +416,8 @@ fun BottomControlBar(
     onAutoScrollSpeedChanged: (Float) -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
+    isTtsPlaying: Boolean,
+    onToggleTts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hudBg = Color(0xFF1E1E1E).copy(alpha = 0.95f)
@@ -389,7 +435,7 @@ fun BottomControlBar(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            
+
             // Chapter Navigation
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -401,45 +447,52 @@ fun BottomControlBar(
                     enabled = currentChapterIndex > 0
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, 
+                        Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Previous Chapter",
                         tint = if (currentChapterIndex > 0) Color.White else Color.Gray
                     )
                 }
-                
+
                 Text(
                     text = if (totalChapters > 0) "Chapter ${currentChapterIndex + 1} / $totalChapters" else "Loading...",
                     style = MaterialTheme.typography.labelLarge,
                     color = Color.White
                 )
-                
+
                 IconButton(
                     onClick = onNextChapter,
                     enabled = currentChapterIndex < totalChapters - 1
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward, 
+                        Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Next Chapter",
                         tint = if (currentChapterIndex < totalChapters - 1) Color.White else Color.Gray
                     )
                 }
             }
 
-            // Auto-scroll
+            // Auto-scroll and TTS
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
+                    onClick = onToggleTts,
+                    modifier = Modifier.background(if (isTtsPlaying) accentColor else Color.DarkGray, CircleShape)
+                ) {
+                    Icon(if (isTtsPlaying) androidx.compose.material.icons.Icons.Default.Pause else androidx.compose.material.icons.Icons.Default.PlayArrow, contentDescription = "TTS")
+                }
+
+                IconButton(
                     onClick = onToggleAutoScroll,
                     modifier = Modifier.background(if (isAutoScrolling) accentColor else Color.DarkGray, CircleShape)
                 ) {
                     Icon(Icons.Default.Speed, contentDescription = "Auto-scroll")
                 }
-                
+
                 Text("Speed", style = MaterialTheme.typography.bodyMedium)
-                
+
                 Slider(
                     value = autoScrollSpeed,
                     onValueChange = onAutoScrollSpeedChanged,
@@ -508,7 +561,7 @@ fun BottomControlBar(
                     ) { Text("+", color = Color.White) }
                 }
             }
-            
+
             // Text Alignment
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -535,7 +588,7 @@ fun BottomControlBar(
                     }
                 }
             }
-            
+
             // Font Family
             Row(
                 modifier = Modifier.fillMaxWidth(),

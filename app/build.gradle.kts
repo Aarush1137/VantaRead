@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.hilt.android)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.google.services)
 }
 
 android {
@@ -103,4 +104,9 @@ dependencies {
   implementation("androidx.work:work-runtime-ktx:2.9.0")
   implementation("androidx.hilt:hilt-work:1.2.0")
   "ksp"("androidx.hilt:hilt-compiler:1.2.0")
+
+  // Firebase
+  implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+  implementation("com.google.firebase:firebase-auth-ktx")
+  implementation("com.google.firebase:firebase-firestore-ktx")
 }
