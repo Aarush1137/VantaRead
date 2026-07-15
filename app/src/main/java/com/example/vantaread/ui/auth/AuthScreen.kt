@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -40,8 +41,8 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var isSignUp by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(value = false) }
+    var isSignUp by remember { mutableStateOf(value = false) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Email, 1: Phone
 
     val uiState by viewModel.uiState.collectAsState()
@@ -118,6 +119,7 @@ fun AuthScreen(
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
+                        var expanded by remember { mutableStateOf(false) }
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 text = "Firebase Not Configured",
@@ -126,10 +128,47 @@ fun AuthScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Account features require a local app/google-services.json file. Check the project README for setup instructions.",
+                                text = "Account features require a local app/google-services.json file.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
+                            
+                            TextButton(
+                                onClick = { expanded = !expanded },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    if (expanded) "Hide Diagnosis" else "Show Diagnosis",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                            
+                            if (expanded) {
+                                uiState.configInfo?.let { info ->
+                                    DiagnosisRow("google-services plugin", info.hasGoogleServicesJson)
+                                    DiagnosisRow("App ID resource", info.hasGoogleAppId)
+                                    DiagnosisRow("API Key resource", info.hasApiKey)
+                                    DiagnosisRow("Google Sign-In ready", info.hasWebClientId)
+                                    DiagnosisRow("Firestore ready", info.hasProjectId)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Package: ${info.packageName}",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    info.appIdPreview?.let {
+                                        Text(
+                                            "App ID: $it",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Note: If you just added the file, click 'Sync Project with Gradle Files' and 'Rebuild Project'.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -307,10 +346,30 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                TextButton(onClick = onContinueAsGuest) {
+                TextButton(onClick = {
+                    Log.d("AuthScreen", "Continue as Guest clicked")
+                    onContinueAsGuest()
+                }) {
                     Text("Continue without account (Guest Mode)")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DiagnosisRow(label: String, success: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text(
+            if (success) "FOUND" else "MISSING",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (success) Color(0xFF4CAF50) else Color(0xFFF44336),
+            fontWeight = FontWeight.Bold
+        )
     }
 }

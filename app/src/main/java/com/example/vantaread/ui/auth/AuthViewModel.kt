@@ -21,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import com.example.vantaread.data.repository.FirebaseConfigInfo
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
@@ -29,7 +30,8 @@ data class AuthUiState(
     val error: String? = null,
     val isCodeSent: Boolean = false,
     val verificationId: String? = null,
-    val isFirebaseConfigured: Boolean = false
+    val isFirebaseConfigured: Boolean = false,
+    val configInfo: FirebaseConfigInfo? = null
 )
 
 @HiltViewModel
@@ -41,7 +43,10 @@ class AuthViewModel @Inject constructor(
     val currentUser = authRepository.currentUser
     val isFirebaseConfigured = authRepository.isConfigured
 
-    private val _uiState = MutableStateFlow(AuthUiState(isFirebaseConfigured = authRepository.isConfigured))
+    private val _uiState = MutableStateFlow(AuthUiState(
+        isFirebaseConfigured = authRepository.isConfigured,
+        configInfo = authRepository.configInfo
+    ))
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     private var phoneVerificationTimeoutJob: Job? = null

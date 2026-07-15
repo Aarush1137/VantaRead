@@ -24,10 +24,11 @@ VantaRead is an Android application for discovering and reading Light Novels fro
   - The `ReaderScreen` has advanced features like auto-scroll, customizable fonts, themes (Vanta Black), text alignment, and margin controls.
 
 ## ✅ What Has Been Done Recently
-1. **Wtr-Lab Cloudflare Bypass**: Overhauled `WtrLabSource` to use `WebViewScraper` instead of raw Jsoup. This solved an issue where WTR-Lab searches and details were returning empty because they were being intercepted by Cloudflare.
-2. **Database Constraint Fix**: Fixed a fatal `FOREIGN KEY constraint failed` error that occurred when adding a novel via URL. The fix ensures that the `novelUrl` string used as the foreign key in `ChapterEntity` matches the parent `NovelEntity` exactly.
-3. **Settings & Batch Download UI**: Built the `SettingsScreen` and `SettingsViewModel`, which save preferences (Theme, Default Source, Batch Download Amount) using `SharedPreferences` via `ReaderPreferencesManager`.
-4. **GitHub Actions CI Fix**: Removed hardcoded absolute Windows paths from `gradle.properties` that were causing the Linux-based CI environment to fail.
+1. **Redesigned Tabbed Authentication**: Overhauled the `AuthScreen` with a modern Material 3 `PrimaryTabRow`, supporting Email/Password and Phone verification in a clean, unified UI.
+2. **Firebase Configuration Diagnostic**: Implemented a "Show Diagnosis" tool in the Auth UI. It checks for generated Android resources (App ID, API Key) to proactively inform users if `google-services.json` is missing or invalid, preventing the "infinite timeout" issue.
+3. **Robust Navigation Lifecycle**: Refined `MainNavigation` with `LaunchedEffect` collectors that reactively redirect users based on `currentUser` and `continuedAsGuest` state changes, ensuring seamless login, logout, and guest transitions.
+4. **VantaStorageManager**: Centralized local file management for novel content and chapters, providing a cleaner API for the `NovelRepository` and `ChapterDownloadWorker`.
+5. **New Source Support**: Added `BoxNovelSource` and improved resilience for existing scrapers with better timeout handling.
 
 ## 🚀 Things To Do (Next Steps)
 1. **Implement Batch Downloading Logic**: The UI for selecting "Download Next 5/10/All Chapters" exists in settings, but the background logic (e.g., a WorkManager task) to systematically download and cache those chapters without blocking the UI still needs to be implemented.

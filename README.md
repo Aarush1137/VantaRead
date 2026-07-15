@@ -98,9 +98,14 @@ Current Implemented Sources:
 
 ## Firebase setup
 
-The Android app expects a local Firebase config at `app/google-services.json`. It is intentionally ignored, so account features work in your local builds without putting your Firebase project configuration in Git. Do not copy `google-services.example.json`; download the real config from Firebase Console for the exact package `com.example.vantaread`.
+The Android app expects a local Firebase config at `app/google-services.json`. It is intentionally ignored, so account features work in your local builds without putting your Firebase project configuration in Git.
 
-Do not commit `app/google-services.json`. If a key is accidentally pushed, rotate or revoke it in Google Cloud/Firebase before closing the GitHub secret alert.
+**Crucial Steps for Account Features:**
+1. Download your `google-services.json` from the Firebase Console.
+2. Place it in the `app/` directory of the project.
+3. **IMPORTANT**: In Android Studio, click **File > Sync Project with Gradle Files**.
+4. **IMPORTANT**: Click **Build > Rebuild Project** to ensure resources are generated.
+5. If sign-in still fails, use the **Show Diagnosis** button on the sign-in screen to troubleshoot.
 
 For Google sign-in, enable Google as a Firebase Authentication provider, then download `google-services.json` again and place it at `app/google-services.json`. The Google Services Gradle plugin reads its Web OAuth client ID into the app as `default_web_client_id`; no client ID needs to be copied into source or committed. Add your debug and release SHA-1/SHA-256 fingerprints to the Firebase Android app before testing on a device.
 

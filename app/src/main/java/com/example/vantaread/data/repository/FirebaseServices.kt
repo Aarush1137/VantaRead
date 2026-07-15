@@ -6,13 +6,24 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
+data class FirebaseConfigInfo(
+    val hasGoogleServicesJson: Boolean,
+    val hasGoogleAppId: Boolean,
+    val hasApiKey: Boolean,
+    val hasWebClientId: Boolean,
+    val hasProjectId: Boolean,
+    val packageName: String,
+    val appIdPreview: String? = null
+)
+
 /**
  * Firebase is an optional integration for local and open-source builds. The reader must remain
  * usable in guest mode when a developer has not supplied google-services.json.
  */
 class FirebaseServices private constructor(
     val auth: FirebaseAuth?,
-    val firestore: FirebaseFirestore?
+    val firestore: FirebaseFirestore?,
+    val configInfo: FirebaseConfigInfo
 ) {
     val isAuthConfigured: Boolean
         get() = auth != null
@@ -24,14 +35,31 @@ class FirebaseServices private constructor(
         private const val TAG = "FirebaseServices"
 
         fun create(context: Context): FirebaseServices {
-            // Check for the existence of google-services.json generated strings
             val res = context.resources
             val packageName = context.packageName
-            val googleAppId = res.getIdentifier("google_app_id", "string", packageName)
             
-            if (googleAppId == 0) {
-                Log.w(TAG, "google_app_id resource not found. Firebase is likely not configured.")
-                return FirebaseServices(null, null)
+            val googleAppIdId = res.getIdentifier("google_app_id", "string", packageName)
+            val googleApiKeyId = res.getIdentifier("google_api_key", "string", packageName)
+            val webClientIdId = res.getIdentifier("default_web_client_id", "string", packageName)
+            val projectIdId = res.getIdentifier("project_id", "string", packageName)
+
+            val googleAppId = if (googleAppIdId != 0) res.getString(googleAppIdId) else null
+            
+            val info = FirebaseConfigInfo(
+                hasGoogleServicesJson = googleAppIdId != 0,
+                hasGoogleAppId = googleAppIdId != 0,
+                hasApiKey = googleApiKeyId != 0,
+                hasWebClientId = webClientIdId != 0,
+                hasProjectId = projectIdId != 0,
+                packageName = packageName,
+                appIdPreview = googleAppId?.let { 
+                    if (it.length > 10) "${it.take(5)}...${it.takeLast(5)}" else it 
+                }
+            )
+
+            if (!info.hasGoogleAppId) {
+                Log.w(TAG, "google_app_id resource not found. Firebase features are disabled.")
+                return FirebaseServices(null, null, info)
             }
 
             val app = try {
@@ -50,7 +78,8 @@ class FirebaseServices private constructor(
                 },
                 firestore = app?.let { 
                     runCatching { FirebaseFirestore.getInstance(it) }.getOrNull() 
-                }
+                },
+                configInfo = info
             )
         }
     }

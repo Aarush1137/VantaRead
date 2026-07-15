@@ -20,6 +20,7 @@ class AuthRepository @Inject constructor(
 
     val auth = firebaseServices.auth
     val isConfigured: Boolean = firebaseServices.isAuthConfigured
+    val configInfo = firebaseServices.configInfo
 
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth?.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()

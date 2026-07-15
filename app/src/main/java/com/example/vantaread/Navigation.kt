@@ -1,6 +1,7 @@
 package com.example.vantaread
 
 import android.app.Activity
+import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -73,11 +74,14 @@ fun MainNavigation() {
     val backStack = rememberNavBackStack(if (currentUser == null) Auth else Library)
     val currentRoute = backStack.lastOrNull()
 
-    LaunchedEffect(currentUser, continuedAsGuest) {
+    LaunchedEffect(currentUser, continuedAsGuest, currentRoute) {
+        Log.d("MainNavigation", "State changed: currentUser=${currentUser?.uid}, continuedAsGuest=$continuedAsGuest, currentRoute=${currentRoute?.javaClass?.simpleName}")
         if (currentUser == null && !continuedAsGuest && currentRoute !is Auth) {
+            Log.d("MainNavigation", "Redirecting to Auth")
             backStack.clear()
             backStack.add(Auth)
         } else if (currentUser != null && currentRoute is Auth) {
+            Log.d("MainNavigation", "Redirecting to Library (authenticated)")
             continuedAsGuest = false
             backStack.clear()
             backStack.add(Library)
@@ -200,6 +204,7 @@ fun MainNavigation() {
                             backStack.add(Library)
                         },
                         onContinueAsGuest = {
+                            Log.d("MainNavigation", "onContinueAsGuest callback triggered")
                             continuedAsGuest = true
                             backStack.clear()
                             backStack.add(Library)

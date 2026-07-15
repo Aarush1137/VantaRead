@@ -1,6 +1,14 @@
 # VantaRead Fixes Summary
 
-- Unified source IDs across Library, Search, Suggestions, Settings, repository, and add-by-URL flows.
+- Redesigned the Authentication UI with a modern Material 3 tabbed layout (Email/Phone).
+- Added a Firebase Diagnostic tool to proactively identify missing `google-services.json` resources and prevent sign-up timeouts.
+- Refined top-level navigation to reactively handle login, logout, and "Guest Mode" transitions via `LaunchedEffect`.
+- Centralized local content storage into a dedicated `VantaStorageManager` utility.
+- Added support for **BoxNovel** as a new supported source.
+- Improved error messaging in `AuthViewModel` to distinguish between configuration errors and network timeouts.
+- Fixed a KSP/Hilt code generation issue that caused build failures after UI refactoring.
+- Enhanced logging across `MainNavigation`, `AuthScreen`, and `AuthViewModel` for easier remote debugging.
+- Updated README with detailed Firebase setup instructions and troubleshooting steps.
 - Made Royal Road the default source and refreshed Royal Road selectors for search, suggestions, thumbnails, details, and chapters.
 - Updated LightNovelPub to the working `.me` domain and refreshed its list/detail/chapter selectors.
 - Reworked WTR-Lab suggestions/search parsing around the current novel-list page after the old search URL stopped working.

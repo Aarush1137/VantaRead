@@ -29,8 +29,13 @@ This file is intended for any AI models (Gemini, Claude, GPT, etc.) assisting wi
 ## 5. Current Implementation Plan
 To see what tasks are currently pending or what phase the app is in, please refer to the `task.md` and `implementation_plan.md` artifacts in the AI's artifact directory (or ask the user for the latest steps).
 
-## 6. Firebase & Cloud Sync (Upcoming)
-- We will be integrating Firebase Auth and Firestore for Cloud Syncing of bookmarks and reading progress across devices in Phase 4.
+## 6. Firebase & Cloud Sync
+- **Configuration Check**: Always check `AuthViewModel.uiState.isFirebaseConfigured` before allowing account-linked buttons to be enabled.
+- **Resource Dependency**: Firebase features depend on `google-services.json` being processed into Android resources. If diagnosis shows "MISSING", instruct the user to **"Sync Project with Gradle Files"** and **"Rebuild Project"**.
+- **Auth State**: Rely on the `AuthRepository.currentUser` flow for the single source of truth regarding the user's session.
+
+## 7. Storage Management
+- Use `VantaStorageManager` for all local file I/O related to novel content. This ensures path consistency across the Repository and background Workers.
 
 ---
 **Note to AI Model**: When starting a new session, review this file and the `task.md` checklist to continue exactly where the previous session left off. Do not break the Hilt DI structure or introduce deprecated libraries.
