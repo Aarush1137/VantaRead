@@ -1,5 +1,10 @@
 package com.example.vantaread
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -93,8 +98,14 @@ fun MainNavigation() {
     ) { innerPadding ->
         NavDisplay(
             backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
+            onBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) else null },
             modifier = Modifier.padding(innerPadding),
+            transitionSpec = {
+                (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it } + fadeOut())
+            },
+            popTransitionSpec = {
+                (slideInHorizontally { -it } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
+            },
             entryProvider = entryProvider {
                 entry<Library> {
                     LibraryScreen(
@@ -109,13 +120,13 @@ fun MainNavigation() {
                 }
                 entry<Discover> {
                     DiscoverScreen(
-                        onNavigateBack = { backStack.removeLast() },
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
                     )
                 }
                 entry<Suggestions> {
                     SuggestionsScreen(
-                        onNavigateBack = { backStack.removeLast() },
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
                         onNovelClick = { url, sourceId -> backStack.add(NovelDetail(url, sourceId)) }
                     )
                 }
@@ -138,7 +149,7 @@ fun MainNavigation() {
                     NovelDetailScreen(
                         novelUrl = navKey.novelUrl,
                         sourceId = navKey.sourceId,
-                        onNavigateBack = { backStack.removeLast() },
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
                         onChapterClick = { chapterUrl, sourceId, chapterTitle ->
                             backStack.add(Reader(chapterUrl, sourceId, navKey.novelUrl, chapterTitle))
                         }
@@ -149,9 +160,9 @@ fun MainNavigation() {
                         chapterUrl = navKey.chapterUrl,
                         sourceId = navKey.sourceId,
                         novelUrl = navKey.novelUrl,
-                        onNavigateBack = { backStack.removeLast() },
+                        onNavigateBack = { if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex) },
                         onNavigateToChapter = { chapterUrl, chapterTitle ->
-                            backStack.removeLast()
+                            if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
                             backStack.add(Reader(chapterUrl, navKey.sourceId, navKey.novelUrl, chapterTitle))
                         }
                     )

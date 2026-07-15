@@ -106,33 +106,37 @@ fun DownloadsScreen(
                     ) { download ->
                         ActiveDownloadItem(download)
                     }
+                } // End if (activeDownloads.isNotEmpty())
 
-                    item {
+                val groupedChapters = downloadedChapters.groupBy { it.novelTitle }
+                
+                groupedChapters.forEach { (novelTitle, chapters) ->
+                    item(key = "header_$novelTitle") {
                         Text(
-                            text = "Downloaded",
+                            text = novelTitle,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                         )
                     }
-                }
-
-                items(
-                    items = downloadedChapters,
-                    key = { it.chapterUrl }
-                ) { chapter ->
-                    DownloadedChapterItem(
-                        chapter = chapter,
-                        onClick = {
-                            onChapterClick(
-                                chapter.chapterUrl,
-                                chapter.sourceId,
-                                chapter.novelUrl,
-                                chapter.chapterTitle
-                            )
-                        },
-                        onRemove = { viewModel.removeDownload(chapter.chapterUrl) }
-                    )
+                    
+                    items(
+                        items = chapters,
+                        key = { it.chapterUrl }
+                    ) { chapter ->
+                        DownloadedChapterItem(
+                            chapter = chapter,
+                            onClick = {
+                                onChapterClick(
+                                    chapter.chapterUrl,
+                                    chapter.sourceId,
+                                    chapter.novelUrl,
+                                    chapter.chapterTitle
+                                )
+                            },
+                            onRemove = { viewModel.removeDownload(chapter.chapterUrl) }
+                        )
+                    }
                 }
             }
         }
@@ -205,7 +209,10 @@ private fun DownloadedChapterItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = chapter.coverUrl,
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(chapter.coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = chapter.novelTitle,
                 modifier = Modifier
                     .size(56.dp, 76.dp)

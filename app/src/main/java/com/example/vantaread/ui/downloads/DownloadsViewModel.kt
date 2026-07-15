@@ -36,33 +36,32 @@ class DownloadsViewModel @Inject constructor(
     val activeDownloads: StateFlow<List<DownloadWorkStatus>> = _activeDownloads.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            while (true) {
-                _activeDownloads.value = loadActiveDownloads()
-                delay(1000)
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            workManager.getWorkInfosByTagFlow(ChapterDownloadWorker.TAG_DOWNLOAD)
+                .collect { workInfos ->
+                    val active = workInfos
+                        .filter { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
+                        .map { workInfo ->
+                            DownloadWorkStatus(
+                                id = workInfo.id.toString(),
+                                novelTitle = workInfo.outputData.getString(ChapterDownloadWorker.KEY_NOVEL_TITLE)
+                                    ?: workInfo.progress.getString(ChapterDownloadWorker.KEY_NOVEL_TITLE)
+                                    ?: "Novel",
+                                chapterTitle = workInfo.outputData.getString(ChapterDownloadWorker.KEY_CHAPTER_TITLE)
+                                    ?: workInfo.progress.getString(ChapterDownloadWorker.KEY_CHAPTER_TITLE)
+                                    ?: "Chapter",
+                                state = workInfo.progress.getString(ChapterDownloadWorker.KEY_DOWNLOAD_STATE)
+                                    ?: if (workInfo.state == WorkInfo.State.RUNNING) "Downloading" else "Queued",
+                                progressText = workInfo.progress.getString(ChapterDownloadWorker.KEY_DOWNLOAD_PROGRESS_TEXT)
+                                    ?: ""
+                            )
+                        }
+                    _activeDownloads.value = active
+                }
         }
     }
 
-    private suspend fun loadActiveDownloads(): List<DownloadWorkStatus> = withContext(Dispatchers.IO) {
-        workManager.getWorkInfosByTag(ChapterDownloadWorker.TAG_DOWNLOAD).get()
-            .filter { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
-            .map { workInfo ->
-                DownloadWorkStatus(
-                    id = workInfo.id.toString(),
-                    novelTitle = workInfo.outputData.getString(ChapterDownloadWorker.KEY_NOVEL_TITLE)
-                        ?: workInfo.progress.getString(ChapterDownloadWorker.KEY_NOVEL_TITLE)
-                        ?: "Novel",
-                    chapterTitle = workInfo.outputData.getString(ChapterDownloadWorker.KEY_CHAPTER_TITLE)
-                        ?: workInfo.progress.getString(ChapterDownloadWorker.KEY_CHAPTER_TITLE)
-                        ?: "Chapter",
-                    state = workInfo.progress.getString(ChapterDownloadWorker.KEY_DOWNLOAD_STATE)
-                        ?: if (workInfo.state == WorkInfo.State.RUNNING) "Downloading" else "Queued",
-                    progressText = workInfo.progress.getString(ChapterDownloadWorker.KEY_DOWNLOAD_PROGRESS_TEXT)
-                        ?: ""
-                )
-            }
-    }
+
 
     fun removeDownload(chapterUrl: String) {
         viewModelScope.launch {

@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.example.vantaread.data.source.SourceCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,11 +69,15 @@ fun LibraryScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("VantaRead Library") },
+                scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -269,7 +276,10 @@ fun RecentReadItem(entry: ReadingHistoryEntity, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = entry.coverUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(entry.coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = entry.novelTitle,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -316,7 +326,10 @@ fun NovelItemUi(title: String, coverUrl: String, onClick: () -> Unit) {
     ) {
         Column {
             AsyncImage(
-                model = coverUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

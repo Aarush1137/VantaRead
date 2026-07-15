@@ -37,7 +37,7 @@ fun VantaReadTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   accent: AppAccent = AppAccent.VANTA_PURPLE,
   // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = false,
+  dynamicColor: Boolean = true,
   content: @Composable () -> Unit,
 ) {
   val baseColorScheme =

@@ -153,7 +153,10 @@ fun HistoryItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = entry.coverUrl,
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(entry.coverUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = entry.novelTitle,
                 modifier = Modifier
                     .size(60.dp, 80.dp)

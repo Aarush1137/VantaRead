@@ -26,6 +26,10 @@ import com.example.vantaread.data.source.SourceCatalog
 import com.example.vantaread.ui.library.LibraryViewModel
 import com.example.vantaread.ui.library.NovelItemUi
 
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SuggestionsScreen(
@@ -38,35 +42,45 @@ fun SuggestionsScreen(
     val activeSourceId by viewModel.activeSourceId.collectAsState()
     val activeSourceName = SourceCatalog.nameFor(activeSourceId)
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text("Suggestions") }
+                title = { Text("Suggestions") },
+                scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->
-        if (isLoading && popularNovels.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (popularNovels.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No suggestions available from $activeSourceName right now.")
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(100.dp),
-                contentPadding = PaddingValues(8.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(popularNovels) { novel ->
-                    NovelItemUi(
-                        title = novel.title,
-                        coverUrl = novel.coverUrl,
-                        onClick = { onNovelClick(novel.url, novel.sourceId.ifBlank { activeSourceId }) }
-                    )
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = { viewModel.refreshPopularNovels() },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (isLoading && popularNovels.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (popularNovels.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No suggestions available from $activeSourceName right now.")
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(100.dp),
+                    contentPadding = PaddingValues(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(popularNovels) { novel ->
+                        NovelItemUi(
+                            title = novel.title,
+                            coverUrl = novel.coverUrl,
+                            onClick = { onNovelClick(novel.url, novel.sourceId.ifBlank { activeSourceId }) }
+                        )
+                    }
                 }
             }
         }

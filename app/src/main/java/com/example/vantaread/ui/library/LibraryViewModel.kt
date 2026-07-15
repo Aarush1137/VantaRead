@@ -101,6 +101,20 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun refreshPopularNovels() {
+        viewModelScope.launch {
+            _isLoadingPopularNovels.value = true
+            try {
+                val sourceId = activeSourceId.value
+                _popularNovels.value = novelRepository.getPopularNovels(sourceId)
+            } catch (e: Exception) {
+                _popularNovels.value = emptyList()
+            } finally {
+                _isLoadingPopularNovels.value = false
+            }
+        }
+    }
+
     private val _addNovelResult = MutableStateFlow<Result<String>?>(null)
     val addNovelResult: StateFlow<Result<String>?> = _addNovelResult
 

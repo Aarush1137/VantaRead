@@ -60,8 +60,8 @@ object WebViewScraper {
                                     ?.replace("\\r", "\r")
                                     ?.replace("\\t", "\t") ?: ""
                                 
-                                if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...")) {
-                                    // Still on Cloudflare page
+                                if (unescapedHtml.contains("challenge-error-text") || unescapedHtml.contains("Just a moment...") || unescapedHtml.length < 1000) {
+                                    // Still on Cloudflare page or page hasn't fully rendered its content yet
                                     if (attempts > 20) {
                                         finished = true
                                         if (continuation.isActive) continuation.resume(Jsoup.parse(unescapedHtml))
