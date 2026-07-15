@@ -4,7 +4,12 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.hilt.android)
   alias(libs.plugins.ksp)
-  alias(libs.plugins.google.services)
+}
+
+if (layout.projectDirectory.file("google-services.json").asFile.exists()) {
+  apply(plugin = "com.google.gms.google-services")
+} else {
+  logger.warn("Firebase config app/google-services.json is missing. Copy app/google-services.example.json and replace placeholders for local Firebase builds.")
 }
 
 android {

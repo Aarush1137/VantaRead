@@ -90,7 +90,9 @@ Current Implemented Sources:
 
 ## Firebase setup
 
-The Android app is configured for the `com.example.vantaread` Firebase application through `app/google-services.json`.
+The Android app expects a local Firebase config at `app/google-services.json`. This file is intentionally ignored because it contains a Firebase/Google API key. Use `app/google-services.example.json` as the shape reference, then download the real Android config from Firebase Console for package `com.example.vantaread`.
+
+Do not commit `app/google-services.json`. If a key is accidentally pushed, rotate or revoke it in Google Cloud/Firebase before closing the GitHub secret alert.
 
 Before releasing a build, enable the required sign-in providers in the Firebase console:
 
